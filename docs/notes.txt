@@ -1,0 +1,20 @@
+What is micro-architecture?
+it is basically a specific arrangement of registers, alu, memories, fsms, other logic building block.
+
+TO DESIGN
+    Divide into 2 path - Datapath and control
+
+Datapath
+    Datapath operates on word
+    memories, ALU, MUX, registers
+
+Control
+    Receives the current instruction from datapath to tell datapath how to execute instruction.
+    It produces MUX select line, Register enables, memory write to control the operation of datapath.
+
+For RISC V hardvard we 4 state elements
+1. PC(program counter)
+2. Instruction memory
+3. Register File
+4. Data Memory
+

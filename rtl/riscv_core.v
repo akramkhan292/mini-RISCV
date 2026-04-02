@@ -1,10 +1,10 @@
 module riscv_core(
-    input logic clk,
-    input logic reset
+    input wire clk,
+    input wire reset
 );
 
     //----------------------PC-----------------------
-    logic [31:0] pc, next_pc;
+    wire [31:0] pc, next_pc;
 
     pc pc_inst (
         .clk(clk),
@@ -14,24 +14,24 @@ module riscv_core(
     );
 
     //-------------------Instruction Memory----------
-    logic [31:0] instr;
+    wire [31:0] instr;
     inst_mem imem(
         .addr(pc),
         .instruction(instr)
     );
 
     //-----------------DECODE-----------------------
-    logic [6:0] opcode;
-    logic [2:0] func3;
-    logic [6:0] func7;
+    wire [6:0] opcode;
+    wire [2:0] func3;
+    wire [6:0] func7;
 
     assign opcode = instr[6:0];
     assign func3 = instr[14:12];
     assign func7 = instr[31:25];
 
     //----------------Control Unit-----------------
-    logic reg_write, mem_read, mem_write, alu_src, branch;
-    logic [3:0] alu_ctrl;
+    wire reg_write, mem_read, mem_write, alu_src, branch;
+    wire [3:0] alu_ctrl;
 
     control_unit cu (
     .opcode(opcode),
@@ -46,8 +46,8 @@ module riscv_core(
 );
 
 // -------------------- Register File --------------------
-logic [4:0] rs1, rs2, rd;
-logic [31:0] rd1, rd2, write_data;
+wire [4:0] rs1, rs2, rd;
+wire [31:0] rd1, rd2, write_data;
 
 assign rs1 = instr[19:15];
 assign rs2 = instr[24:20];
@@ -65,10 +65,10 @@ register_file rf (
 );
 
 // -------------------- Immediate Generator (basic) --------------------
-logic [31:0] imm;
+reg [31:0] imm;
 
 // only I-type for now 20{instr[31]} because it is for sign bit.
-always_comb begin
+always @(*) begin
     case(opcode)
         7'b0010011, // ADDI
         7'b0000011: // LW
@@ -86,8 +86,8 @@ always_comb begin
 end
 
 // -------------------- ALU --------------------
-logic [31:0] alu_in2, alu_result;
-logic zero;
+wire [31:0] alu_in2, alu_result;
+wire zero;
 
 assign alu_in2 = (alu_src) ? imm : rd2;
 
@@ -100,7 +100,7 @@ alu alu_inst (
 );
 
 // -------------------- Data Memory --------------------
-logic [31:0] data_out;
+wire [31:0] data_out;
 
 data_mem dmem (
     .clk(clk),
