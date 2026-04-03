@@ -1,0 +1,346 @@
+$date
+	Sat Apr  4 01:55:17 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module tb_riscv_core $end
+$var reg 1 ! clk $end
+$var reg 1 " reset $end
+$scope module dut $end
+$var wire 1 ! clk $end
+$var wire 1 " reset $end
+$var wire 1 # zero $end
+$var wire 32 $ write_data [31:0] $end
+$var wire 5 % rs2 [4:0] $end
+$var wire 5 & rs1 [4:0] $end
+$var wire 1 ' reg_write $end
+$var wire 32 ( rd2 [31:0] $end
+$var wire 32 ) rd1 [31:0] $end
+$var wire 5 * rd [4:0] $end
+$var wire 32 + pc [31:0] $end
+$var wire 7 , opcode [6:0] $end
+$var wire 32 - next_pc [31:0] $end
+$var wire 1 . mem_write $end
+$var wire 1 / mem_read $end
+$var wire 32 0 instr [31:0] $end
+$var wire 7 1 func7 [6:0] $end
+$var wire 3 2 func3 [2:0] $end
+$var wire 32 3 data_out [31:0] $end
+$var wire 1 4 branch $end
+$var wire 1 5 alu_src $end
+$var wire 32 6 alu_result [31:0] $end
+$var wire 32 7 alu_in2 [31:0] $end
+$var wire 4 8 alu_ctrl [3:0] $end
+$var reg 32 9 imm [31:0] $end
+$scope module alu_inst $end
+$var wire 32 : b [31:0] $end
+$var wire 1 # zero $end
+$var wire 4 ; alu_ctrl [3:0] $end
+$var wire 32 < a [31:0] $end
+$var parameter 4 = ADD $end
+$var parameter 4 > AND $end
+$var parameter 4 ? OR $end
+$var parameter 4 @ SUB $end
+$var reg 32 A result [31:0] $end
+$upscope $end
+$scope module cu $end
+$var wire 3 B func3 [2:0] $end
+$var wire 7 C func7 [6:0] $end
+$var wire 7 D opcode [6:0] $end
+$var parameter 7 E BRANCH $end
+$var parameter 7 F I_TYPE $end
+$var parameter 7 G LOAD $end
+$var parameter 7 H R_TYPE $end
+$var parameter 7 I STORE $end
+$var reg 4 J alu_ctrl [3:0] $end
+$var reg 1 5 alu_src $end
+$var reg 1 4 branch $end
+$var reg 1 / mem_read $end
+$var reg 1 . mem_write $end
+$var reg 1 ' reg_write $end
+$upscope $end
+$scope module dmem $end
+$var wire 32 K addr [31:0] $end
+$var wire 1 ! clk $end
+$var wire 1 / mem_read $end
+$var wire 1 . mem_write $end
+$var wire 32 L data_out [31:0] $end
+$var wire 32 M data_in [31:0] $end
+$upscope $end
+$scope module imem $end
+$var wire 32 N instruction [31:0] $end
+$var wire 32 O addr [31:0] $end
+$upscope $end
+$scope module pc_inst $end
+$var wire 1 ! clk $end
+$var wire 32 P next_pc [31:0] $end
+$var wire 1 " rst $end
+$var reg 32 Q pc [31:0] $end
+$upscope $end
+$scope module rf $end
+$var wire 1 ! clk $end
+$var wire 5 R rd [4:0] $end
+$var wire 5 S rs1 [4:0] $end
+$var wire 5 T rs2 [4:0] $end
+$var wire 32 U wd [31:0] $end
+$var wire 1 ' we $end
+$var wire 32 V rd2 [31:0] $end
+$var wire 32 W rd1 [31:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b100011 I
+b110011 H
+b11 G
+b10011 F
+b1100011 E
+b1 @
+b11 ?
+b10 >
+b0 =
+$end
+#0
+$dumpvars
+b0 W
+bx V
+b101 U
+b101 T
+b0 S
+b1 R
+b0 Q
+b100 P
+b0 O
+b10100000000000010010011 N
+bx M
+b0 L
+b101 K
+b0 J
+b10011 D
+b0 C
+b0 B
+b101 A
+b0 <
+b0 ;
+b101 :
+b101 9
+b0 8
+b101 7
+b101 6
+15
+04
+b0 3
+b0 2
+b0 1
+b10100000000000010010011 0
+0/
+0.
+b100 -
+b10011 ,
+b0 +
+b1 *
+b0 )
+bx (
+1'
+b0 &
+b101 %
+b101 $
+0#
+1"
+0!
+$end
+#5000
+1!
+#10000
+0!
+#15000
+0"
+1!
+#20000
+0!
+#25000
+b11 $
+b11 U
+b11 6
+b11 A
+b11 K
+b11 7
+b11 :
+b10 *
+b10 R
+b11 %
+b11 T
+b11 9
+b1100000000000100010011 0
+b1100000000000100010011 N
+b1000 -
+b1000 P
+b100 +
+b100 O
+b100 Q
+1!
+#30000
+0!
+#35000
+b1000 $
+b1000 U
+b1000 6
+b1000 A
+b1000 K
+b11 (
+b11 M
+b11 V
+b101 )
+b101 <
+b101 W
+05
+1'
+b11 7
+b11 :
+b11 *
+b11 R
+b10 %
+b10 T
+b1 &
+b1 S
+b110011 ,
+b110011 D
+b0 9
+b1000001000000110110011 0
+b1000001000000110110011 N
+b1100 -
+b1100 P
+b1000 +
+b1000 O
+b1000 Q
+1!
+#40000
+0!
+#45000
+b101 $
+b101 U
+b101 6
+b101 A
+b101 K
+b1000 )
+b1000 <
+b1000 W
+b1 8
+b1 ;
+b1 J
+1'
+b100 *
+b100 R
+b11 &
+b11 S
+b100000 1
+b100000 C
+b1000000001000011000001000110011 0
+b1000000001000011000001000110011 N
+b10000 -
+b10000 P
+b1100 +
+b1100 O
+b1100 Q
+1!
+#50000
+0!
+#55000
+bx $
+bx U
+bx 7
+bx :
+x#
+bx 6
+bx A
+bx K
+bx (
+bx M
+bx V
+bx )
+bx <
+bx W
+b0 8
+b0 ;
+b0 J
+0'
+bx *
+bx R
+bx %
+bx T
+bx &
+bx S
+bx 1
+bx C
+bx 2
+bx B
+bx ,
+bx D
+bx 0
+bx N
+b10100 -
+b10100 P
+b10000 +
+b10000 O
+b10000 Q
+1!
+#60000
+0!
+#65000
+b11000 -
+b11000 P
+b10100 +
+b10100 O
+b10100 Q
+1!
+#70000
+0!
+#75000
+b11100 -
+b11100 P
+b11000 +
+b11000 O
+b11000 Q
+1!
+#80000
+0!
+#85000
+b100000 -
+b100000 P
+b11100 +
+b11100 O
+b11100 Q
+1!
+#90000
+0!
+#95000
+b100100 -
+b100100 P
+b100000 +
+b100000 O
+b100000 Q
+1!
+#100000
+0!
+#105000
+b101000 -
+b101000 P
+b100100 +
+b100100 O
+b100100 Q
+1!
+#110000
+0!
+#115000
+b101100 -
+b101100 P
+b101000 +
+b101000 O
+b101000 Q
+1!

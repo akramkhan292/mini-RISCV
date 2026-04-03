@@ -13,8 +13,9 @@ module register_file(
     reg [31:0] regfile [31:0];
 
     // Asynchronous read - combinational
-    assign rd1 = regfile[rs1];
-    assign rd2 = regfile[rs2];
+    // Hardwire x0 to zero on reads
+    assign rd1 = (rs1 == 5'b0) ? 32'b0 : regfile[rs1];
+    assign rd2 = (rs2 == 5'b0) ? 32'b0 : regfile[rs2];
 
     // Synchronous write - sequential
     always @(posedge clk) begin
