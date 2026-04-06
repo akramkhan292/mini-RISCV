@@ -8,10 +8,15 @@ module tb_riscv;
   
   logic clk;
   logic reset;
+
+  riscv_intf intf_inst(clk,reset);
   
   riscv_core dut(
     .clk(clk),
-    .reset(reset)
+    .reset(reset),
+    .prog_addr(intf_inst.prog_addr),
+    .prog_data(intf_inst.prog_data),
+    .prog_we(intf_inst.prog_we)
   );
   
   initial clk = 0;
