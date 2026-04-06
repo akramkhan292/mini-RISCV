@@ -1,6 +1,10 @@
 module riscv_core(
     input wire clk,
-    input wire reset
+    input wire reset,
+    // Add programing Interface
+    input wire [31:0] prog_addr,
+    input wire [31:0] prog_data,
+    input wire        prog_we
 );
 
     //----------------------PC-----------------------
@@ -17,7 +21,10 @@ module riscv_core(
     wire [31:0] instr;
     inst_mem imem(
         .addr(pc),
-        .instruction(instr)
+        .instruction(instr),
+        .prog_addr(prog_addr),
+        .prog_data(prog_data),
+        .prog_we(prog_we)
     );
 
     //-----------------DECODE-----------------------
