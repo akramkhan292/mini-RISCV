@@ -1,47 +1,55 @@
-# RISC-V Processor
+# RISC-V Processor with UVM Testbench
 
-A Verilog/SystemVerilog implementation of a simple 32-bit RISC-V processor.
+A Verilog/SystemVerilog implementation of a simple 32-bit RISC-V processor with comprehensive UVM testbench for verification.
 
 ## Overview
 
 This project implements a basic RISC-V CPU core with the following features:
 - **Instruction Set**: RV32I (32-bit RISC-V base integer instruction set)
-- **Architecture**: 5-stage pipeline (Fetch, Decode, Execute, Memory, Writeback)
+- **Architecture**: Single-cycle (non-pipelined)
 - **Register File**: 32 general-purpose registers (x0-x31)
-- **Memory**: Separate instruction and data memory
+- **Memory**: Separate instruction and data memory (Harvard architecture)
+- **Verification**: UVM-based testbench with Sequence/Sequencer/Driver/Monitor
 
 ---
 
 ## Project Structure
 
 ```
-risc-v-processor/
-├── rtl/                      # Register Transfer Level (HDL code)
-│   ├── alu.v                 # Arithmetic Logic Unit
-│   ├── control_unit.v        # Control signal decoder
-│   ├── register_file.v       # 32x32-bit register file
-│   ├── pc_rtl.v              # Program Counter
-│   ├── mem.v                 # Memory modules
-│   ├── inst_mem.v            # Instruction memory
-│   ├── data_mem.v            # Data memory
-│   ├── decoder.v             # Instruction decoder
-│   └── cpu_top.v             # Top-level CPU module
+risc-v/
+├── rtl/                          # RTL Design (Hardware)
+│   ├── alu.v                     # Arithmetic Logic Unit
+│   ├── control_unit.v            # Instruction Decoder
+│   ├── register_file.v           # 32x32-bit Register File
+│   ├── pc_rtl.v                  # Program Counter
+│   ├── mem.v                     # Instruction Memory
+│   ├── data_mem.v                # Data Memory
+│   ├── riscv_core.v              # Top-level CPU Core
+│   └── *_rtl.v                   # Additional modules
 │
-├── tb/                       # Testbenches
-│   ├── tb_alu.v
-│   ├── tb_register_file.v
-│   ├── tb_control_unit.v
-│   └── tb_cpu_top.v
+├── tb/                           # UVM Testbench
+│   ├── interface.sv              # Virtual Interface
+│   ├── sequence_item.sv          # Transaction Class
+│   ├── sequence.sv               # Stimulus Generator
+│   ├── driver.sv                 # DUT Driver
+│   ├── monitor.sv                # Output Monitor
+│   ├── agent.sv                  # Agent (connects components)
+│   ├── environment.sv            # Test Environment
+│   ├── riscv_test.sv             # Base Test
+│   ├── riscv_uvmtb.sv            # Top-level TB
+│   └── tb_riscv_core.v           # Verilog Testbench (legacy)
 │
-├── sim/                      # Simulation outputs
-│   └── .gitkeep
+├── sim/                          # Simulation Outputs
+│   ├── cpu.vvp                   # Compiled simulation
+│   └── waveform.vcd              # Waveform dump
 │
-├── docs/                     # Documentation
-│   └── README.md
+├── docs/                         # Documentation
+│   ├── INTERVIEW_GUIDE.md        # UVM & Architecture Interview Q&A
+│   └── README.md                 # This file
 │
-├── README.md                 # This file
 ├── .gitignore
-└── Makefile                  # Build and simulation scripts
+├── README.md                     # Project overview
+└── program.mem                   # Sample program (hex)
 ```
 
 ---
@@ -88,11 +96,74 @@ risc-v-processor/
 ✓ Logic operations (AND, OR)  
 ✓ Memory read/write support  
 ✓ Control signal generation  
-✓ Testbenches for verification  
+✓ Testbenches for verification  ## UVM Testbench Architecture
+
+### Core Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Interface** | `interface.sv` | Virtual interface connecting testbench to DUT |
+| **Sequence Item** | `sequence_item.sv` | Transaction class (instr_item) |
+| **Sequence** | `sequence.sv` | Generates random instruction sequences |
+| **Sequencer** | Built-in UVM | Distributes transactions to driver |
+| **Driver** | `driver.sv` | Applies transactions to DUT via interface |
+| **Monitor** | `monitor.sv` | Observes DUT outputs and captures transactions |
+| **Agent** | `agent.sv` | Connects sequencer, driver, and monitor |
+| **Environment** | `environment.sv` | Container for agent |
+| **Test** | `riscv_test.sv` | Orchestrates simulation and starts sequences |
+| **Top-level TB** | `riscv_uvmtb.sv` | Instantiates DUT + UVM components |
+
+### Testbench Flow
+
+```
+┌─────────────────────────────────────────────────────┐
+│  test (base_test)                                   │
+│  - Raises objection                                 │
+│  - Creates and starts sequence on sequencer         │
+│  - Drops objection when done                        │
+└────────────────┬────────────────────────────────────┘
+                 │
+         ┌───────▼──────────┐
+         │  environment     │
+         │  (riscv_env)     │
+         └────────┬─────────┘
+                  │
+         ┌────────▼────────┐
+         │ agent           │
+         │ (riscv_agent)   │
+         └────────┬────────┘
+                  │
+        ┌─────────┼─────────┐
+        │         │         │
+   ┌────▼──┐ ┌───▼──┐ ┌───▼────┐
+   │Driver │ │Seqr  │ │Monitor  │
+   │       │ │      │ │         │
+   │Drives │◄┤Feeds │ │Captures │
+   │DUT    │ │Items │ │Output   │
+   └───────┘ └──────┘ └─────────┘
+```
+
+### Key Phases
+
+```
+1. BUILD_PHASE
+   └─ Create sequencer, driver, monitor
+   └─ Get virtual interface from config_db
+   
+2. CONNECT_PHASE
+   └─ Connect driver.seq_item_port ◄► sequencer.seq_item_export
+   └─ Monitor ready to capture
+   
+3. RUN_PHASE
+   └─ Sequence starts: generates 5 random instructions
+   └─ Each instruction:
+      • Randomized (opcode, rd, rs1, rs2, funct3, funct7, imm)
+      • Passed to driver
+      • Driver encodes and writes to program memory sequentially
+      • Monitor observes write and captures transaction
+```
 
 ---
-
-## Getting Started
 
 ### Prerequisites
 - Verilog/SystemVerilog simulator (e.g., ModelSim, Icarus Verilog, VCS)
@@ -110,21 +181,50 @@ make build
 iverilog -o sim/cpu.vvp rtl/*.v tb/tb_cpu_top.v
 ```
 
-### Running Simulations
+### UVM Testbench Compilation & Simulation
 
-#### Using Makefile:
 ```bash
-make sim
-```
+# Compile RTL + UVM testbench
+iverilog -o sim/cpu.vvp rtl/*.v tb/*.sv
 
-#### Manual simulation (Icarus Verilog):
-```bash
+# Run UVM simulation
 vvp sim/cpu.vvp -vcd sim/waveform.vcd
+
+# View waveforms
+gtkwave sim/waveform.vcd
 ```
 
-#### View waveforms (gtkwave):
+### Manual RTL Testbench (Legacy)
+
 ```bash
-gtkwave sim/waveform.vcd
+# Compile and run
+iverilog -o sim/cpu.vvp rtl/*.v tb/tb_riscv_core.v
+vvp sim/cpu.vvp
+```
+
+---
+
+## Testing
+
+### Run Component Tests
+```bash
+# Test ALU
+iverilog -o sim/alu.vvp rtl/alu.v tb/tb_alu.v
+vvp sim/alu.vvp
+
+# Test Register File
+iverilog -o sim/regfile.vvp rtl/register_file.v tb/tb_register_file.v
+vvp sim/regfile.vvp
+```
+
+### Run Full System Test
+```bash
+# UVM testbench
+iverilog -o sim/cpu.vvp rtl/*.v tb/*.sv
+vvp sim/cpu.vvp
+
+# Check test results in console output
+# Look for "TB PASS" or "TB FAIL"
 ```
 
 ---

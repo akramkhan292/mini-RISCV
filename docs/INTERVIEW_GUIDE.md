@@ -917,3 +917,139 @@ x10-x11 a0-a1  Function arguments / return values
 1100011   Branch (beq)
 ```
 
+---
+
+## UVM Testbench Architecture
+
+**Project**: RISC-V Processor UVM Verification
+
+### What is UVM?
+
+**Universal Verification Methodology** is a standardized approach for:
+- Creating **reusable** testbench components
+- Automating **stimulus generation** (sequences)
+- **Monitoring** and **capturing** outputs
+- **Verifying** correct behavior (via scoreboards)
+
+### Key UVM Components
+
+#### 1. **Virtual Interface**
+Bridge between testbench and DUT. Carries signals (prog_addr, prog_data, prog_we).
+
+#### 2. **Sequence Item**
+Transaction class defining instruction format (opcode, rd, rs1, rs2, funct3, funct7, imm).
+
+#### 3. **Sequence**
+Generates 5 random instructions with constraints:
+- Valid opcode distribution: R-type (30%), I-type (30%), Load (20%), Store (10%), Branch (10%)
+- Registers constrained: rd ∈ [1:31], rs1,rs2 ∈ [0:31]
+
+#### 4. **Sequencer**
+Built-in UVM component that queues items and distributes to driver on demand.
+
+#### 5. **Driver**
+Applies instructions to DUT:
+- Encodes instruction using `instr_encoder()`
+- Writes sequentially to program memory (addr +4 each cycle)
+- Uses virtual interface to drive signals
+
+#### 6. **Monitor**
+Observes program writes:
+- Detects when prog_we = 1
+- Decodes instruction back to fields
+- Sends captured transaction to scoreboard
+
+#### 7. **Agent**
+Connects sequencer ◄► driver, manages components.
+
+#### 8. **Environment**
+Container for agent, preparation for multiple agents.
+
+#### 9. **Test**
+Orchestrates simulation:
+- Raise objection (keep simulation alive)
+- Create sequence and start on sequencer
+- Drop objection (end simulation)
+
+### UVM Phases
+
+```
+build_phase   → Create components
+├─ Create sequencer, driver, monitor
+├─ Get virtual interface from config_db
+└─ Register with factory
+
+connect_phase → Connect ports
+├─ Connect driver.seq_item_port ◄► sequencer.seq_item_export
+└─ Monitor ready to capture
+
+run_phase     → Execute test
+├─ Sequence generates 5 items
+├─ Sequencer queues items
+├─ Driver applies to DUT sequentially
+├─ Monitor captures outputs
+└─ Continue until all objections dropped
+```
+
+### Interview Q&A: UVM
+
+**Q1: Why Virtual Interface?**
+```
+A: Testbench = SystemVerilog, DUT = Verilog
+   Virtual interface bridges the gap, enabling hierarchical access.
+```
+
+**Q2: Sequence vs Sequencer?**
+```
+A: Sequence = WHAT (user writes stimulus)
+   Sequencer = HOW (UVM distributes items)
+```
+
+**Q3: Driver vs Monitor?**
+```
+A: Driver = APPLY stimulus (write signals)
+   Monitor = OBSERVE outputs (read signals, never write)
+```
+
+**Q4: Why Constrained Randomization?**
+```
+A: Without constraints:
+   - Random opcode might be invalid (not in RISC-V spec)
+   - Random registers might violate CPU design
+   
+   With constraints:
+   - Only valid instruction types generated
+   - Registers within valid ranges
+   - Better test quality and coverage
+```
+
+**Q5: Why raise/drop objection?**
+```
+A: raise_objection = "I'm running, don't stop simulation"
+   drop_objection = "I'm done, simulation can finish"
+   
+   Prevents premature simulation termination.
+```
+
+---
+
+## Summary
+
+| Component | Purpose | Analogy |
+|-----------|---------|---------|
+| Sequence | WHAT to test | Recipe |
+| Sequencer | Distributes items | Line manager |
+| Driver | Applies to DUT | Worker |
+| Monitor | Observes output | Quality checker |
+| Agent | Groups components | Department |
+| Environment | Manages agents | Factory |
+| Test | Orchestrates all | Director |
+
+**Key Points**:
+- ✓ Components are **reusable** across projects
+- ✓ Standardized **UVM methodology**
+- ✓ Automatic **factory registration**, **copying**, **printing**
+- ✓ Built-in **configuration database** for hierarchical settings
+- ✓ **TLM ports** for safe transaction passing
+
+
