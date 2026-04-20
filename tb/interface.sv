@@ -1,7 +1,7 @@
 interface riscv_intf(input logic clk, input logic rst);
 
-    logic [31:0] prog_addr;
-    logic [31:0] prog_data;
-    logic prog_we;
+    wire [31:0] prog_addr;
+    wire [31:0] prog_data;
+    wire prog_we;
 
 endinterface

@@ -25,6 +25,7 @@ class instr_item extends uvm_sequence_item;
     rand bit [2:0] funct3;
     rand bit [6:0] funct7;
     rand bit [6:0] opcode;
+    rand bit [31:0] prog_addr;
 
     constraint opcode_const {
         opcode dist {R_TYPE:=30,I_TYPE:=30,LOAD:=20,STORE:=10,BRANCH:=10};
@@ -50,6 +51,9 @@ class instr_item extends uvm_sequence_item;
         (opcode == BRANCH) -> (imm[0] == 0);
     }
 
+    constraint prog_addr_const {
+        prog_addr <= 127;
+    }
     
     function new(string name = "instr_item");
         super.new(name);
