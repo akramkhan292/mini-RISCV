@@ -49,10 +49,9 @@ Stage1 (Fetch) → Stage2 (Decode) → ... (all parallel)
 
 **Instruction Types Supported**:
 - R-type: ADD, SUB, AND, OR
-- I-type: ADDI (immediate arithmetic)
-- Load: LW (word load)
-- Store: SW (word store)
-- Branch: BEQ (conditional branch)
+- I-type: ADDI, LW, LB, LH, LBU, LHU
+- Store: SW, SH, SB
+- Branch: BEQ, BNE, BLT, BGE, BLTU, BGEU
 
 **Not Included** (Future extensions):
 - Floating-point (RV32F)

@@ -20,9 +20,11 @@ Verify the CPU at architectural state level: PC sequence, register writeback, me
 | Arithmetic smoke | ADDI, ADD, SUB dataflow |
 | Logical ops | AND/OR decode and ALU control |
 | x0 behavior | Writes to x0 do not change architectural state |
+| Load semantics | LB/LH sign-extend, LBU/LHU zero-extend |
+| Store granularity | SB/SH write bytes and halfwords into memory |
 | Memory | SW followed by LW from same address |
-| Branch taken | BEQ changes PC by branch immediate |
-| Branch not taken | BEQ falls through to `pc + 4` |
+| Branch taken | Conditional branch changes PC by branch immediate |
+| Branch not taken | Conditional branch falls through to `pc + 4` |
 | Sign extension | Negative I/S/B immediates |
 
 ## Scoreboard Checks
@@ -44,7 +46,8 @@ Verify the CPU at architectural state level: PC sequence, register writeback, me
 
 - Hit every supported opcode.
 - Hit every implemented ALU operation.
-- Hit load and store.
-- Hit branch instruction.
+- Hit byte/halfword and word load/store behaviors.
+- Hit signed and unsigned load variants.
+- Hit branch instruction variants.
 - Hit destination register bins: x0, low, mid, high.
 - Hit both register-writing and non-register-writing instructions.

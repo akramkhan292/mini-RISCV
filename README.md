@@ -7,9 +7,9 @@ This repository is a staged learning and portfolio project for industry-style CP
 Implemented instructions:
 
 - R-type: `ADD`, `SUB`, `AND`, `OR`
-- I-type: `ADDI`, `LW`
-- S-type: `SW`
-- B-type: `BEQ`
+- I-type: `ADDI`, `LW`, `LB`, `LH`, `LBU`, `LHU`
+- S-type: `SW`, `SB`, `SH`
+- B-type: `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU`
 
 See [docs/ISA_SUBSET.md](docs/ISA_SUBSET.md) for encoding and behavior.
 
