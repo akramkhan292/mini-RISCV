@@ -52,7 +52,6 @@ module control_unit(
                     3'b100: alu_ctrl = 4'b0100;  // XORI
                     3'b110: alu_ctrl = 4'b0011;  // ORI
                     3'b111: alu_ctrl = 4'b0010;  // ANDI
-                    end
                 endcase
             end
             LOAD: begin
