@@ -50,6 +50,7 @@ module riscv_core(
     //----------------Control Unit-----------------
     wire reg_write, mem_read, mem_write, alu_src, branch;
     wire [3:0] alu_ctrl;
+    wire [2:0] store_type;
 
     control_unit cu (
         .opcode(opcode),
@@ -58,6 +59,7 @@ module riscv_core(
         .reg_write(reg_write),
         .mem_read(mem_read),
         .mem_write(mem_write),
+        .store_type(store_type),
         .alu_src(alu_src),
         .branch(branch),
         .alu_ctrl(alu_ctrl)
@@ -111,26 +113,37 @@ module riscv_core(
         .clk(clk),
         .mem_read(mem_read),
         .mem_write(mem_write),
+        .store_type(store_type),
         .addr(alu_result),
         .data_in(rd2),
         .data_out(data_out)
     );
 
-    // -------------------- Write Back --------------------
-    assign write_data = (mem_read) ? data_out : alu_result;      //for LOAD write_data = data_out and for add sub and other arthmatic operation write_data = alu_result
+// -------------------- Load Data Extraction & Sign Extension --------------------
+wire [31:0] load_data;
 
-    // -------------------- PC Update --------------------
-    assign next_pc = (branch && zero) ? pc + imm : pc + 4;       // branch is output of cu
+assign load_data = 
+    (func3 == 3'b000) ? {{24{data_out[7]}},   data_out[7:0]}    : // LB  (sign-extend byte)
+    (func3 == 3'b001) ? {{16{data_out[15]}},  data_out[15:0]}   : // LH  (sign-extend halfword)
+    (func3 == 3'b100) ? {24'b0,               data_out[7:0]}    : // LBU (zero-extend byte)
+    (func3 == 3'b101) ? {16'b0,               data_out[15:0]}   : // LHU (zero-extend halfword)
+                        data_out;                                   // LW (full 32-bit word)
 
-    // -------------------- Debug/Verification Interface --------------------
-    assign dbg_pc = pc;
-    assign dbg_instr = instr;
-    assign dbg_reg_write = reg_write;
-    assign dbg_rd = rd;
-    assign dbg_writeback_data = write_data;
-    assign dbg_mem_write = mem_write;
-    assign dbg_mem_addr = alu_result;
-    assign dbg_mem_wdata = rd2;
-    assign dbg_commit_valid = !reset && !prog_we;
+// -------------------- Write Back --------------------
+assign write_data = (mem_read) ? load_data : alu_result;      //for LOAD write_data = load_data (with sign/zero extension) and for arithmetic operation write_data = alu_result
+
+// -------------------- PC Update --------------------
+assign next_pc = (branch && zero) ? pc + imm : pc + 4;       // branch is output of cu
+
+// -------------------- Debug/Verification Interface --------------------
+assign dbg_pc = pc;
+assign dbg_instr = instr;
+assign dbg_reg_write = reg_write;
+assign dbg_rd = rd;
+assign dbg_writeback_data = write_data;
+assign dbg_mem_write = mem_write;
+assign dbg_mem_addr = alu_result;
+assign dbg_mem_wdata = rd2;
+assign dbg_commit_valid = !reset && !prog_we;
     
 endmodule
