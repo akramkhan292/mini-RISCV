@@ -7,8 +7,6 @@ class instr_item extends uvm_sequence_item;
     localparam STORE  = 7'b0100011;    // Store
     localparam BRANCH = 7'b1100011;    // Branch
 
-    `uvm_object_utils(instr_item)
-
     `uvm_object_utils_begin(instr_item)
         `uvm_field_int(opcode, UVM_ALL_ON)
         `uvm_field_int(rd, UVM_ALL_ON)
@@ -17,6 +15,14 @@ class instr_item extends uvm_sequence_item;
         `uvm_field_int(imm, UVM_ALL_ON)
         `uvm_field_int(funct3, UVM_ALL_ON)
         `uvm_field_int(funct7, UVM_ALL_ON)
+        `uvm_field_int(pc, UVM_ALL_ON)
+        `uvm_field_int(instr, UVM_ALL_ON)
+        `uvm_field_int(reg_write, UVM_ALL_ON)
+        `uvm_field_int(wb_rd, UVM_ALL_ON)
+        `uvm_field_int(wb_data, UVM_ALL_ON)
+        `uvm_field_int(mem_write, UVM_ALL_ON)
+        `uvm_field_int(mem_addr, UVM_ALL_ON)
+        `uvm_field_int(mem_wdata, UVM_ALL_ON)
     `uvm_object_utils_end
 
     rand bit [4:0] rd, rs1, rs2;
@@ -25,7 +31,16 @@ class instr_item extends uvm_sequence_item;
     rand bit [2:0] funct3;
     rand bit [6:0] funct7;
     rand bit [6:0] opcode;
-    rand bit [31:0] prog_addr;
+    bit [31:0] prog_addr;
+    bit [31:0] prog_data;
+    bit [31:0] pc;
+    bit [31:0] instr;
+    bit reg_write;
+    bit [4:0] wb_rd;
+    bit [31:0] wb_data;
+    bit mem_write;
+    bit [31:0] mem_addr;
+    bit [31:0] mem_wdata;
 
     constraint opcode_const {
         opcode dist {R_TYPE:=30,I_TYPE:=30,LOAD:=20,STORE:=10,BRANCH:=10};
@@ -43,16 +58,13 @@ class instr_item extends uvm_sequence_item;
             (funct7==7'h20) -> (funct3 == 0);
             (funct7==7'h00) -> (funct3 dist {0 := 1, 6 := 1, 7 := 1});
         }
-        else {
-            funct3 dist {0 := 1, 6 := 1, 7 := 1};
-        }
+        else if (opcode == I_TYPE) funct3 == 3'b000;  // ADDI
+        else if (opcode == LOAD)   funct3 == 3'b010;  // LW
+        else if (opcode == STORE)  funct3 == 3'b010;  // SW
+        else if (opcode == BRANCH) funct3 == 3'b000;  // BEQ
     }
     constraint branch_align {
         (opcode == BRANCH) -> (imm[0] == 0);
-    }
-
-    constraint prog_addr_const {
-        prog_addr <= 127;
     }
     
     function new(string name = "instr_item");

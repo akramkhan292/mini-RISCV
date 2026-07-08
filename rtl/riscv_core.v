@@ -4,7 +4,17 @@ module riscv_core(
     // Add programing Interface
     input wire [31:0] prog_addr,
     input wire [31:0] prog_data,
-    input wire        prog_we
+    input wire        prog_we,
+
+    output wire [31:0] dbg_pc,
+    output wire [31:0] dbg_instr,
+    output wire        dbg_reg_write,
+    output wire [4:0]  dbg_rd,
+    output wire [31:0] dbg_writeback_data,
+    output wire        dbg_mem_write,
+    output wire [31:0] dbg_mem_addr,
+    output wire [31:0] dbg_mem_wdata,
+    output wire        dbg_commit_valid
 );
 
     //----------------------PC-----------------------
@@ -20,6 +30,7 @@ module riscv_core(
     //-------------------Instruction Memory----------
     wire [31:0] instr;
     inst_mem imem(
+        .clk(clk),
         .addr(pc),
         .instruction(instr),
         .prog_addr(prog_addr),
@@ -71,26 +82,13 @@ register_file rf (
     .rd2(rd2)
 );
 
-// -------------------- Immediate Generator (basic) --------------------
-reg [31:0] imm;
+// -------------------- Immediate Generator --------------------
+wire [31:0] imm;
 
-// only I-type for now 20{instr[31]} because it is for sign bit.
-always @(*) begin
-    case(opcode)
-        7'b0010011, // ADDI
-        7'b0000011: // LW
-            imm = {{20{instr[31]}}, instr[31:20]};
-
-        7'b0100011: // SW (S-type)
-            imm = {{20{instr[31]}}, instr[31:25], instr[11:7]};
-
-        7'b1100011: // BEQ (B-type)
-            imm = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
-
-        default:
-            imm = 32'd0;
-    endcase
-end
+imm_gen imm_gen_inst (
+    .instr(instr),
+    .imm(imm)
+);
 
 // -------------------- ALU --------------------
 wire [31:0] alu_in2, alu_result;
@@ -123,5 +121,16 @@ assign write_data = (mem_read) ? data_out : alu_result;      //for LOAD write_da
 
 // -------------------- PC Update --------------------
 assign next_pc = (branch && zero) ? pc + imm : pc + 4;       // branch is output of cu
+
+// -------------------- Debug/Verification Interface --------------------
+assign dbg_pc = pc;
+assign dbg_instr = instr;
+assign dbg_reg_write = reg_write;
+assign dbg_rd = rd;
+assign dbg_writeback_data = write_data;
+assign dbg_mem_write = mem_write;
+assign dbg_mem_addr = alu_result;
+assign dbg_mem_wdata = rd2;
+assign dbg_commit_valid = !reset && !prog_we;
     
 endmodule

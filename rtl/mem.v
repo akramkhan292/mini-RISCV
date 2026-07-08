@@ -1,7 +1,7 @@
 module inst_mem(
     input wire clk,
     input wire [31:0] addr,
-    output wire [31:0] instruction
+    output wire [31:0] instruction,
     // Add programing Interface
     input wire [31:0] prog_addr,
     input wire [31:0] prog_data,
@@ -11,7 +11,7 @@ module inst_mem(
 
     always @(posedge clk) begin
         if(prog_we)
-            mem[prog_addr] <= prog_data;
+            mem[prog_addr[9:2]] <= prog_data;
     end
     // addr[9:2] converts byte address to word index
     assign instruction = mem[addr[9:2]];

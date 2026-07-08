@@ -25,10 +25,22 @@ class base_test extends uvm_test;
     // Create and start sequence on sequencer
     seq = riscv_sequence::type_id::create("seq",this);
     seq.start(env_inst.agent_inst.seqr_inst);
+
+    repeat (2) @(posedge env_inst.agent_inst.drv_inst.vif.clk);
+    env_inst.agent_inst.drv_inst.vif.rst <= 1'b0;
+    repeat (8) @(posedge env_inst.agent_inst.drv_inst.vif.clk);
     
     `uvm_info(get_type_name(),"[Test] Sequence finished",UVM_LOW)
     
     // Lower objection to end simulation
     phase.drop_objection(this);
   endtask
+endclass
+
+class riscv_smoke_test extends base_test;
+  `uvm_component_utils(riscv_smoke_test)
+
+  function new(string name="riscv_smoke_test", uvm_component parent);
+    super.new(name, parent);
+  endfunction
 endclass

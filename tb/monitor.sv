@@ -28,14 +28,21 @@ class riscv_monitor extends uvm_monitor;
   task run_phase(uvm_phase phase);
     `uvm_info(get_type_name(),"[RUN] Monitor starting",UVM_LOW)
     forever begin
-      @(posedge vif.clk);
-      if(vif.prog_we) begin
+      @(negedge vif.clk);
+      if(vif.dbg_commit_valid) begin
         captured_item = instr_item::type_id::create("captured_item",this);
-        captured_item.prog_addr = vif.prog_addr;
-        decode_instruction(vif.prog_data);
+        captured_item.pc = vif.dbg_pc;
+        captured_item.instr = vif.dbg_instr;
+        captured_item.reg_write = vif.dbg_reg_write;
+        captured_item.wb_rd = vif.dbg_rd;
+        captured_item.wb_data = vif.dbg_writeback_data;
+        captured_item.mem_write = vif.dbg_mem_write;
+        captured_item.mem_addr = vif.dbg_mem_addr;
+        captured_item.mem_wdata = vif.dbg_mem_wdata;
+        decode_instruction(vif.dbg_instr);
         mon_port.write(captured_item);
-        `uvm_info(get_type_name(),$sformatf("[MONITOR] Captured: Addr=%0d, Opcode=%0h",
-                 captured_item.prog_addr, captured_item.opcode),UVM_MEDIUM)
+        `uvm_info(get_type_name(),$sformatf("[MONITOR] Commit: PC=%0h Opcode=%0h",
+                 captured_item.pc, captured_item.opcode),UVM_MEDIUM)
       end
     end
   endtask

@@ -18,6 +18,12 @@ class riscv_driver extends uvm_driver#(instr_item);
   
   task run_phase(uvm_phase phase);
     `uvm_info(get_type_name(),"[RUN] Driver starting",UVM_LOW)
+    vif.rst <= 1'b1;
+    vif.prog_addr <= 32'd0;
+    vif.prog_data <= 32'd0;
+    vif.prog_we <= 1'b0;
+    repeat (2) @(posedge vif.clk);
+
     forever begin
       // Get next instruction item from sequencer
       seq_item_port.get_next_item(req);
@@ -37,7 +43,6 @@ class riscv_driver extends uvm_driver#(instr_item);
   endtask
   
   task drive_instruction(instr_item item);
-    // Encode instruction: {funct7[31:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]}
     bit [31:0] encoded_instr;
     
     encoded_instr = item.instr_encoder();
@@ -46,6 +51,8 @@ class riscv_driver extends uvm_driver#(instr_item);
     vif.prog_addr <= prog_addr_counter;  // Sequential address
     vif.prog_data <= encoded_instr;
     vif.prog_we <= 1'b1;
+    item.prog_addr = prog_addr_counter;
+    item.prog_data = encoded_instr;
     
     @(posedge vif.clk);
     vif.prog_we <= 1'b0;
