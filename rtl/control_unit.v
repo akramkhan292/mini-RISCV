@@ -9,6 +9,7 @@ module control_unit(
     output reg [2:0] store_type,  // Store type: 000=SB, 001=SH, 010=SW
     output reg alu_src,
     output reg branch,
+    output reg [2:0] branch_type,
     output reg [3:0] alu_ctrl
 );
     localparam R_TYPE = 7'b0110011;    // Register-Register
@@ -23,6 +24,7 @@ module control_unit(
         mem_read = 0;
         mem_write = 0;
         store_type = 3'b010;  // Default to SW
+        branch_type = 3'b000; // Default no branch
         alu_src = 0;
         branch = 0;
         alu_ctrl = 4'b0000;
@@ -91,10 +93,31 @@ module control_unit(
                 endcase
             end
             BRANCH: begin
+                branch = 1;
                 case (func3)
                     3'b000: begin // BEQ
-                        branch = 1;
-                        alu_ctrl = 4'b0001;
+                        branch_type = 3'b000;
+                        alu_ctrl = 4'b0001; // SUB
+                    end
+                    3'b001: begin // BNE
+                        branch_type = 3'b001;
+                        alu_ctrl = 4'b0001; // SUB
+                    end
+                    3'b100: begin // BLT
+                        branch_type = 3'b010;
+                        alu_ctrl = 4'b1000; // SLT
+                    end
+                    3'b101: begin // BGE
+                        branch_type = 3'b011;
+                        alu_ctrl = 4'b1000; // SLT
+                    end
+                    3'b110: begin // BLTU
+                        branch_type = 3'b100;
+                        alu_ctrl = 4'b1001; // SLTU
+                    end
+                    3'b111: begin // BGEU
+                        branch_type = 3'b101;
+                        alu_ctrl = 4'b1001; // SLTU
                     end
                 endcase
             end

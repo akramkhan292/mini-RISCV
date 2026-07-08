@@ -61,6 +61,29 @@ module tb_riscv_core;
         dut.imem.mem[14] = 32'h00201523; // sh   x2, 10(x0)   -> store halfword 3 to mem[2][31:16]
         dut.imem.mem[15] = 32'h00802783; // lw   x15, 8(x0)   -> load mem[2] back to verify
         
+        dut.imem.mem[16] = 32'h00500813; // addi x16, x0, 5
+        dut.imem.mem[17] = 32'h00300893; // addi x17, x0, 3
+        dut.imem.mem[18] = 32'h0000913;  // addi x18, x0, 0 (initialize skipped target)
+        dut.imem.mem[19] = 32'h0000a13;  // addi x20, x0, 0
+        dut.imem.mem[20] = 32'h0000b13;  // addi x22, x0, 0
+        dut.imem.mem[21] = 32'h0000c13;  // addi x24, x0, 0
+        dut.imem.mem[22] = 32'h0000d13;  // addi x26, x0, 0
+        dut.imem.mem[23] = 32'h1181463;  // bne x16, x17, +8 -> taken
+        dut.imem.mem[24] = 32'h100913;   // addi x18, x0, 1 (skipped)
+        dut.imem.mem[25] = 32'h200993;   // addi x19, x0, 2
+        dut.imem.mem[26] = 32'h108c463;  // blt x17, x16, +8 -> taken
+        dut.imem.mem[27] = 32'h100a13;   // addi x20, x0, 1 (skipped)
+        dut.imem.mem[28] = 32'h200a93;   // addi x21, x0, 2
+        dut.imem.mem[29] = 32'h1185463;  // bge x16, x17, +8 -> taken
+        dut.imem.mem[30] = 32'h100b13;   // addi x22, x0, 1 (skipped)
+        dut.imem.mem[31] = 32'h200b93;   // addi x23, x0, 2
+        dut.imem.mem[32] = 32'h108e463;  // bltu x17, x16, +8 -> taken
+        dut.imem.mem[33] = 32'h100c13;   // addi x24, x0, 1 (skipped)
+        dut.imem.mem[34] = 32'h200c93;   // addi x25, x0, 2
+        dut.imem.mem[35] = 32'h1187463;  // bgeu x16, x17, +8 -> taken
+        dut.imem.mem[36] = 32'h100d13;   // addi x26, x0, 1 (skipped)
+        dut.imem.mem[37] = 32'h200d93;   // addi x27, x0, 2
+        
         // Pre-initialize data memory with test value for load instruction testing
         dut.dmem.mem[1] = 32'h00008888;  // Test value for LB, LBU, LH, LHU instructions
         dut.dmem.mem[2] = 32'h00000000;  // Initialize mem[2] for store instruction testing
@@ -70,8 +93,8 @@ module tb_riscv_core;
         repeat (2) @(posedge clk);
         reset = 0;
         
-        // Run for enough cycles (16 instructions, ~22-24 cycles)
-        repeat (26) @(posedge clk);
+        // Run for enough cycles (38 instructions, ~46 cycles)
+        repeat (46) @(posedge clk);
         
         // Display results
         $display("\n========== Test Results ==========");
@@ -90,6 +113,17 @@ module tb_riscv_core;
         $display("\n--- Store Instruction Tests ---");
         $display("mem[2] (SB + SH) = 0x%08x (expected: 0x00030005)", dut.dmem.mem[2]);
         $display("x15 (LW mem[2]) = 0x%08x (expected: 0x00030005)", dut.rf.regfile[15]);
+        $display("\n--- Branch Instruction Tests ---");
+        $display("x18 = %0d (expected: 0)", dut.rf.regfile[18]);
+        $display("x19 = %0d (expected: 2)", dut.rf.regfile[19]);
+        $display("x20 = %0d (expected: 0)", dut.rf.regfile[20]);
+        $display("x21 = %0d (expected: 2)", dut.rf.regfile[21]);
+        $display("x22 = %0d (expected: 0)", dut.rf.regfile[22]);
+        $display("x23 = %0d (expected: 2)", dut.rf.regfile[23]);
+        $display("x24 = %0d (expected: 0)", dut.rf.regfile[24]);
+        $display("x25 = %0d (expected: 2)", dut.rf.regfile[25]);
+        $display("x26 = %0d (expected: 0)", dut.rf.regfile[26]);
+        $display("x27 = %0d (expected: 2)", dut.rf.regfile[27]);
         $display("==================================\n");
         
         // Check if test passed
@@ -105,7 +139,17 @@ module tb_riscv_core;
             $signed(dut.rf.regfile[13]) == -30584 &&
             dut.rf.regfile[14][15:0] == 34952 &&
             dut.dmem.mem[2] == 32'h00030005 &&
-            dut.rf.regfile[15] == 32'h00030005) begin
+            dut.rf.regfile[15] == 32'h00030005 &&
+            dut.rf.regfile[18] == 0 &&
+            dut.rf.regfile[19] == 2 &&
+            dut.rf.regfile[20] == 0 &&
+            dut.rf.regfile[21] == 2 &&
+            dut.rf.regfile[22] == 0 &&
+            dut.rf.regfile[23] == 2 &&
+            dut.rf.regfile[24] == 0 &&
+            dut.rf.regfile[25] == 2 &&
+            dut.rf.regfile[26] == 0 &&
+            dut.rf.regfile[27] == 2) begin
             $display("TEST PASSED!\n");
         end else begin
             $display("TEST FAILED!\n");

@@ -49,6 +49,7 @@ module riscv_core(
 
     //----------------Control Unit-----------------
     wire reg_write, mem_read, mem_write, alu_src, branch;
+    wire [2:0] branch_type;
     wire [3:0] alu_ctrl;
     wire [2:0] store_type;
 
@@ -62,6 +63,7 @@ module riscv_core(
         .store_type(store_type),
         .alu_src(alu_src),
         .branch(branch),
+        .branch_type(branch_type),
         .alu_ctrl(alu_ctrl)
     );
 
@@ -132,8 +134,20 @@ assign load_data =
 // -------------------- Write Back --------------------
 assign write_data = (mem_read) ? load_data : alu_result;      //for LOAD write_data = load_data (with sign/zero extension) and for arithmetic operation write_data = alu_result
 
+// -------------------- Branch Decision --------------------
+wire branch_taken;
+
+assign branch_taken = branch && (
+    (branch_type == 3'b000 && alu_result == 32'd0) || // BEQ
+    (branch_type == 3'b001 && alu_result != 32'd0) || // BNE
+    (branch_type == 3'b010 && alu_result == 32'd1) || // BLT
+    (branch_type == 3'b011 && alu_result == 32'd0) || // BGE
+    (branch_type == 3'b100 && alu_result == 32'd1) || // BLTU
+    (branch_type == 3'b101 && alu_result == 32'd0)    // BGEU
+);
+
 // -------------------- PC Update --------------------
-assign next_pc = (branch && zero) ? pc + imm : pc + 4;       // branch is output of cu
+assign next_pc = (branch_taken) ? pc + imm : pc + 4;       // branch is output of cu
 
 // -------------------- Debug/Verification Interface --------------------
 assign dbg_pc = pc;
