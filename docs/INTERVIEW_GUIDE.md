@@ -156,7 +156,7 @@ A: Register file HOLDS STATE (memory).
 
 ## Program Counter (PC)
 
-**File**: `rtl/pc_rtl.v`
+**File**: `rtl/core/pc.v`
 
 ### What is it?
 The PC stores the memory address of the current instruction. On each clock cycle, it updates to the address of the next instruction to fetch.
@@ -345,7 +345,7 @@ A: Add more cases:
 
 ## Instruction Memory
 
-**File**: `rtl/mem.v`
+**File**: `rtl/memory/inst_mem.v`
 
 ### What is it?
 Read-only storage for program code (instructions). Processor reads instructions using PC as address. In simulation, loaded from file.
@@ -488,7 +488,7 @@ A: Current design:
 
 ## Data Memory
 
-**File**: `rtl/data_mem.v`
+**File**: `rtl/memory/data_mem.v`
 
 ### What is it?
 Read-write storage for program data. Updated during execution. Accessed by Load (LW) and Store (SW) instructions.

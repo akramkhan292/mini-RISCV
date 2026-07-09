@@ -1,0 +1,23 @@
+{
+  "files.associations": {
+    "*.v": "verilog",
+    "*.sv": "systemverilog"
+  },
+  "verilog.includePath": [
+    "${workspaceFolder}/rtl",
+    "${workspaceFolder}/tb",
+    "${workspaceFolder}"
+  ],
+  "verilog.linter": "iverilog",
+  "verilog.linterPath": "iverilog",
+  "verilog.formatting.provider": "verible",
+  "verilog.trace.server": "verbose",
+  "systemverilog.includeIndexing": [
+    "**/*.{sv,v,svh,vh}"
+  ],
+  "systemverilog.excludeIndexing": "",
+  "systemverilog.compileOnOpen": true,
+  "systemverilog.antlrVerification": false,
+  "systemverilog.verifyOnOpen": false,
+  "systemverilog.trace.server": "verbose"
+}

@@ -1,4 +1,4 @@
-RTL := rtl/*.v
+RTL := $(shell find rtl -type f -name '*.v' | sort)
 SMOKE_TB := tb/tb_riscv_core.v
 UVM_TOP := tb/riscv_uvmtb.sv
 

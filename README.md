@@ -16,14 +16,23 @@ See [docs/ISA_SUBSET.md](docs/ISA_SUBSET.md) for encoding and behavior.
 ## Project Structure
 
 ```text
-rtl/              synthesizable CPU blocks
+rtl/core/         synthesizable CPU blocks and core datapath
+rtl/memory/       instruction and data memory modules
 tb/               smoke testbench and UVM components
 docs/             ISA, micro-architecture, verification, debug notes
 Makefile          local smoke and Questa commands
 ```
 
+`rtl/core/` now uses a stage-oriented core decomposition:
+- `riscv_core.v` assembles fetch, decode, execute, and memory stage modules.
+- `fetch_stage.v` handles PC and instruction fetch.
+- `decode_stage.v` handles register file reads/writes and immediate decode.
+- `execute_stage.v` handles ALU operations, branch/jump decisions, and next-PC.
+- `memory_stage.v` handles data memory access and load sign/zero extension.
+
 Key docs:
 
+- [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
 - [docs/MICRO_ARCH.md](docs/MICRO_ARCH.md)
 - [docs/VERIFICATION_PLAN.md](docs/VERIFICATION_PLAN.md)
 - [docs/DEBUG_GUIDE.md](docs/DEBUG_GUIDE.md)
