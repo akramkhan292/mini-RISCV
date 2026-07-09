@@ -83,7 +83,16 @@ module tb_riscv_core;
         dut.imem.mem[35] = 32'h1187463;  // bgeu x16, x17, +8 -> taken
         dut.imem.mem[36] = 32'h100d13;   // addi x26, x0, 1 (skipped)
         dut.imem.mem[37] = 32'h200d93;   // addi x27, x0, 2
-        
+
+        // JAL / JALR tests
+        dut.imem.mem[38] = 32'h0b000e93; // addi x29, x0, 176  -> target address for JALR
+        dut.imem.mem[39] = 32'h0080056f; // jal  x10, 8        -> x10 = pc+4, skip mem[40]
+        dut.imem.mem[40] = 32'h100613;   // addi x12, x0, 1   -> skipped by JAL
+        dut.imem.mem[41] = 32'h200e13;   // addi x28, x0, 2   -> executed after JAL
+        dut.imem.mem[42] = 32'h00e8f67; // jalr x30, x29, 0  -> x30 = pc+4, jump to mem[44]
+        dut.imem.mem[43] = 32'h100e13;   // addi x28, x0, 1   -> skipped by JALR
+        dut.imem.mem[44] = 32'h400f93;   // addi x31, x0, 4   -> executed after JALR target
+
         // Pre-initialize data memory with test value for load instruction testing
         dut.dmem.mem[1] = 32'h00008888;  // Test value for LB, LBU, LH, LHU instructions
         dut.dmem.mem[2] = 32'h00000000;  // Initialize mem[2] for store instruction testing
@@ -93,8 +102,8 @@ module tb_riscv_core;
         repeat (2) @(posedge clk);
         reset = 0;
         
-        // Run for enough cycles (38 instructions, ~46 cycles)
-        repeat (46) @(posedge clk);
+        // Run for enough cycles (45 instructions, ~70 cycles)
+        repeat (70) @(posedge clk);
         
         // Display results
         $display("\n========== Test Results ==========");
@@ -113,6 +122,9 @@ module tb_riscv_core;
         $display("\n--- Store Instruction Tests ---");
         $display("mem[2] (SB + SH) = 0x%08x (expected: 0x00030005)", dut.dmem.mem[2]);
         $display("x15 (LW mem[2]) = 0x%08x (expected: 0x00030005)", dut.rf.regfile[15]);
+        $display("x10 (JAL) = %0d (expected: 156)", dut.rf.regfile[10]);
+        $display("x30 (JALR) = %0d (expected: 172)", dut.rf.regfile[30]);
+        $display("x31 (JALR skip target) = %0d (expected: 4)", dut.rf.regfile[31]);
         $display("\n--- Branch Instruction Tests ---");
         $display("x18 = %0d (expected: 0)", dut.rf.regfile[18]);
         $display("x19 = %0d (expected: 2)", dut.rf.regfile[19]);
@@ -140,6 +152,9 @@ module tb_riscv_core;
             dut.rf.regfile[14][15:0] == 34952 &&
             dut.dmem.mem[2] == 32'h00030005 &&
             dut.rf.regfile[15] == 32'h00030005 &&
+            dut.rf.regfile[10] == 160 &&
+            dut.rf.regfile[30] == 172 &&
+            dut.rf.regfile[31] == 4 &&
             dut.rf.regfile[18] == 0 &&
             dut.rf.regfile[19] == 2 &&
             dut.rf.regfile[20] == 0 &&

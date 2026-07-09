@@ -48,7 +48,7 @@ module riscv_core(
     assign func7 = instr[31:25];
 
     //----------------Control Unit-----------------
-    wire reg_write, mem_read, mem_write, alu_src, branch;
+    wire reg_write, mem_read, mem_write, alu_src, branch, jump, jalr;
     wire [2:0] branch_type;
     wire [3:0] alu_ctrl;
     wire [2:0] store_type;
@@ -64,7 +64,9 @@ module riscv_core(
         .alu_src(alu_src),
         .branch(branch),
         .branch_type(branch_type),
-        .alu_ctrl(alu_ctrl)
+        .alu_ctrl(alu_ctrl),
+        .jump(jump),
+        .jalr(jalr)
     );
 
     // -------------------- Register File --------------------
@@ -121,43 +123,49 @@ module riscv_core(
         .data_out(data_out)
     );
 
-// -------------------- Load Data Extraction & Sign Extension --------------------
-wire [31:0] load_data;
+    // -------------------- Load Data Extraction & Sign Extension --------------------
+    wire [31:0] load_data;
+    wire [31:0] pc_plus4 = pc + 4;
 
-assign load_data = 
-    (func3 == 3'b000) ? {{24{data_out[7]}},   data_out[7:0]}    : // LB  (sign-extend byte)
-    (func3 == 3'b001) ? {{16{data_out[15]}},  data_out[15:0]}   : // LH  (sign-extend halfword)
-    (func3 == 3'b100) ? {24'b0,               data_out[7:0]}    : // LBU (zero-extend byte)
-    (func3 == 3'b101) ? {16'b0,               data_out[15:0]}   : // LHU (zero-extend halfword)
-                        data_out;                                   // LW (full 32-bit word)
+    assign load_data = 
+        (func3 == 3'b000) ? {{24{data_out[7]}},   data_out[7:0]}    : // LB  (sign-extend byte)
+        (func3 == 3'b001) ? {{16{data_out[15]}},  data_out[15:0]}   : // LH  (sign-extend halfword)
+        (func3 == 3'b100) ? {24'b0,               data_out[7:0]}    : // LBU (zero-extend byte)
+        (func3 == 3'b101) ? {16'b0,               data_out[15:0]}   : // LHU (zero-extend halfword)
+                            data_out;                                   // LW (full 32-bit word)
 
-// -------------------- Write Back --------------------
-assign write_data = (mem_read) ? load_data : alu_result;      //for LOAD write_data = load_data (with sign/zero extension) and for arithmetic operation write_data = alu_result
+    // -------------------- Write Back --------------------
+    assign write_data = ((jump || jalr) ? pc_plus4 :
+                        (mem_read) ? load_data :
+                                     alu_result);      //for LOAD write_data = load_data (with sign/zero extension) and for arithmetic operation write_data = alu_result
 
-// -------------------- Branch Decision --------------------
-wire branch_taken;
+    // -------------------- Branch Decision --------------------
+    wire branch_taken;
 
-assign branch_taken = branch && (
-    (branch_type == 3'b000 && alu_result == 32'd0) || // BEQ
-    (branch_type == 3'b001 && alu_result != 32'd0) || // BNE
-    (branch_type == 3'b010 && alu_result == 32'd1) || // BLT
-    (branch_type == 3'b011 && alu_result == 32'd0) || // BGE
-    (branch_type == 3'b100 && alu_result == 32'd1) || // BLTU
-    (branch_type == 3'b101 && alu_result == 32'd0)    // BGEU
-);
+    assign branch_taken = branch && (
+        (branch_type == 3'b000 && alu_result == 32'd0) || // BEQ
+        (branch_type == 3'b001 && alu_result != 32'd0) || // BNE
+        (branch_type == 3'b010 && alu_result == 32'd1) || // BLT
+        (branch_type == 3'b011 && alu_result == 32'd0) || // BGE
+        (branch_type == 3'b100 && alu_result == 32'd1) || // BLTU
+        (branch_type == 3'b101 && alu_result == 32'd0)    // BGEU
+    );
 
-// -------------------- PC Update --------------------
-assign next_pc = (branch_taken) ? pc + imm : pc + 4;       // branch is output of cu
+    // -------------------- PC Update --------------------
+    assign next_pc = (jalr) ? {alu_result[31:1], 1'b0} :
+                     (jump) ? pc + imm :
+                     (branch_taken) ? pc + imm :
+                     pc_plus4;
 
-// -------------------- Debug/Verification Interface --------------------
-assign dbg_pc = pc;
-assign dbg_instr = instr;
-assign dbg_reg_write = reg_write;
-assign dbg_rd = rd;
-assign dbg_writeback_data = write_data;
-assign dbg_mem_write = mem_write;
-assign dbg_mem_addr = alu_result;
-assign dbg_mem_wdata = rd2;
-assign dbg_commit_valid = !reset && !prog_we;
+    // -------------------- Debug/Verification Interface --------------------
+    assign dbg_pc = pc;
+    assign dbg_instr = instr;
+    assign dbg_reg_write = reg_write;
+    assign dbg_rd = rd;
+    assign dbg_writeback_data = write_data;
+    assign dbg_mem_write = mem_write;
+    assign dbg_mem_addr = alu_result;
+    assign dbg_mem_wdata = rd2;
+    assign dbg_commit_valid = !reset && !prog_we;
     
 endmodule

@@ -8,11 +8,14 @@ module imm_gen(
     localparam LOAD   = 7'b0000011;
     localparam STORE  = 7'b0100011;
     localparam BRANCH = 7'b1100011;
+    localparam JAL    = 7'b1101111;
+    localparam JALR   = 7'b1100111;
 
     always @(*) begin
         case (opcode)
             I_TYPE,
-            LOAD:
+            LOAD,
+            JALR:
                 imm = {{20{instr[31]}}, instr[31:20]};
 
             STORE:
@@ -21,6 +24,9 @@ module imm_gen(
             BRANCH:
                 imm = {{19{instr[31]}}, instr[31], instr[7],
                        instr[30:25], instr[11:8], 1'b0};
+            JAL:
+                imm = {{11{instr[31]}}, instr[31], instr[19:12], instr[20],
+                       instr[30:21], 1'b0};
 
             default:
                 imm = 32'd0;

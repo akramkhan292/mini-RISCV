@@ -10,13 +10,17 @@ module control_unit(
     output reg alu_src,
     output reg branch,
     output reg [2:0] branch_type,
-    output reg [3:0] alu_ctrl
+    output reg [3:0] alu_ctrl,
+    output reg jump,
+    output reg jalr
 );
     localparam R_TYPE = 7'b0110011;    // Register-Register
     localparam I_TYPE = 7'b0010011;    // Immediate
     localparam LOAD   = 7'b0000011;    // Load
     localparam STORE  = 7'b0100011;    // Store
     localparam BRANCH = 7'b1100011;    // Branch
+    localparam JAL    = 7'b1101111;    // JAL
+    localparam JALR   = 7'b1100111;    // JALR
 
     always @(*) begin
         // Default: prevent latches
@@ -25,6 +29,8 @@ module control_unit(
         mem_write = 0;
         store_type = 3'b010;  // Default to SW
         branch_type = 3'b000; // Default no branch
+        jump = 0;
+        jalr = 0;
         alu_src = 0;
         branch = 0;
         alu_ctrl = 4'b0000;
@@ -120,6 +126,18 @@ module control_unit(
                         alu_ctrl = 4'b1001; // SLTU
                     end
                 endcase
+            end
+            JAL: begin
+                reg_write = 1;
+                jump = 1;
+                alu_ctrl = 4'b1111;
+            end
+            JALR: begin
+                reg_write = 1;
+                jump = 1;
+                jalr = 1;
+                alu_src = 1;
+                alu_ctrl = 4'b0000; // ADD rs1 + imm
             end
         endcase
     end
