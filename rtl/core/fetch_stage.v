@@ -1,6 +1,7 @@
 module fetch_stage(
     input wire clk,
     input wire reset,
+    input wire        pc_en,
     input wire [31:0] next_pc,
     input wire [31:0] prog_addr,
     input wire [31:0] prog_data,
@@ -13,6 +14,7 @@ module fetch_stage(
     pc pc_inst (
         .clk(clk),
         .rst(reset),
+        .en(pc_en),
         .next_pc(next_pc),
         .pc(pc)
     );

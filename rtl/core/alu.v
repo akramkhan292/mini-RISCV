@@ -28,9 +28,10 @@ localparam SLTU = 4'b1001;
             AND: result = a & b;
             OR: result = a | b; 
             XOR: result = a ^ b;
-            SLL: result = a << b;
-            SRL: result = a >> b;
-            SRA: result = $signed(a) >>> b;
+            // RV32 register and immediate shifts use only the low five bits.
+            SLL: result = a << b[4:0];
+            SRL: result = a >> b[4:0];
+            SRA: result = $signed(a) >>> b[4:0];
             SLT: result = ($signed(a)<$signed(b)) ? 32'd1 : 32'd0;
             SLTU: result = (a<b) ? 32'd1 : 32'd0;
             default: result = 32'd0;

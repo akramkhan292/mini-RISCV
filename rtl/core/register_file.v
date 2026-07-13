@@ -14,8 +14,12 @@ module register_file(
 
     // Asynchronous read - combinational
     // Hardwire x0 to zero on reads
-    assign rd1 = (rs1 == 5'b0) ? 32'b0 : regfile[rs1];
-    assign rd2 = (rs2 == 5'b0) ? 32'b0 : regfile[rs2];
+    // WB-to-ID bypass is required because the WB write and ID/EX capture occur
+    // on the same rising edge. Without it, ID would latch the pre-write value.
+    assign rd1 = (rs1 == 5'b0) ? 32'b0 :
+                 ((we && rd == rs1) ? wd : regfile[rs1]);
+    assign rd2 = (rs2 == 5'b0) ? 32'b0 :
+                 ((we && rd == rs2) ? wd : regfile[rs2]);
 
     // Synchronous write - sequential
     always @(posedge clk) begin

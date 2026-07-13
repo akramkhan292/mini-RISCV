@@ -1,49 +1,77 @@
-# RISC-V Single-Cycle Core with UVM Verification
+# RV32I Five-Stage Pipeline Core with UVM Verification
 
-This repository is a staged learning and portfolio project for industry-style CPU design and verification. The current design is a single-cycle RV32I-subset core with directed tests, debug/commit visibility, and a growing UVM environment.
+This repository is a staged learning and portfolio project for industry-style CPU design and verification. The core is an in-order, single-issue, five-stage `IF/ID/EX/MEM/WB` pipeline with directed tests, a retirement/debug interface, and a growing UVM environment.
 
-## Current RTL Scope
+## Pipeline Overview
 
-Implemented instructions:
+```text
+IF -> IF/ID -> ID -> ID/EX -> EX -> EX/MEM -> MEM -> MEM/WB -> WB
+```
+
+- IF fetches at the current PC and normally selects `if_pc + 4` for the next fetch.
+- ID decodes the instruction, reads the register file, and generates immediates and control.
+- EX applies EX/MEM and MEM/WB forwarding, performs the ALU operation, and resolves branches and jumps.
+- MEM performs the data-memory access.
+- WB selects the ALU, load, or link value and writes the `rd` carried in the MEM/WB register.
+- A WB-to-ID bypass supplies a value written and read in the same cycle.
+- A load followed immediately by a dependent instruction inserts one bubble while holding PC and IF/ID.
+- A taken branch or jump redirects fetch from EX and flushes the younger IF/ID and ID/EX entries.
+- Valid, PC, instruction, destination, and side-effect metadata travel together so the debug interface describes one coherent retiring instruction.
+
+See [docs/MICRO_ARCH.md](docs/MICRO_ARCH.md) for the forwarding, stall, flush, writeback, and retirement rules.
+
+## Declared ISA Scope
+
+The currently declared subset is:
 
 - R-type: `ADD`, `SUB`, `AND`, `OR`
-- I-type: `ADDI`, `LW`, `LB`, `LH`, `LBU`, `LHU`
-- S-type: `SW`, `SB`, `SH`
-- B-type: `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU`
+- I-type: `ADDI`
+- Loads: `LW`, `LB`, `LH`, `LBU`, `LHU`
+- Stores: `SW`, `SB`, `SH`
+- Branches: `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU`
 
-See [docs/ISA_SUBSET.md](docs/ISA_SUBSET.md) for encoding and behavior.
+Additional ALU operations and `JAL`/`JALR` have RTL paths or directed stimulus, but are not claimed as qualified until the directed and UVM checks agree. See [docs/ISA_SUBSET.md](docs/ISA_SUBSET.md) for the support matrix.
 
 ## Project Structure
 
 ```text
-rtl/core/         synthesizable CPU blocks and core datapath
-rtl/memory/       instruction and data memory modules
-tb/               smoke testbench and UVM components
-docs/             ISA, micro-architecture, verification, debug notes
-Makefile          local smoke and Questa commands
+rtl/core/         pipeline stages, pipeline registers, control, and datapath
+rtl/memory/       instruction and data memory models
+tb/               directed smoke test and UVM components
+docs/             ISA, microarchitecture, verification, and debug notes
+Makefile          directed regressions and Questa commands
 ```
 
-`rtl/core/` now uses a stage-oriented core decomposition:
-- `riscv_core.v` assembles fetch, decode, execute, and memory stage modules.
-- `fetch_stage.v` handles PC and instruction fetch.
-- `decode_stage.v` handles register file reads/writes and immediate decode.
-- `execute_stage.v` handles ALU operations, branch/jump decisions, and next-PC.
-- `memory_stage.v` handles data memory access and load sign/zero extension.
+Key RTL blocks:
 
-Key docs:
+- `rtl/core/riscv_core.v` integrates the five stages and pipeline control.
+- `rtl/core/pipeline_regs.v` holds the IF/ID, ID/EX, EX/MEM, and MEM/WB state.
+- `rtl/core/fetch_stage.v`, `decode_stage.v`, `execute_stage.v`, and `memory_stage.v` contain the stage logic.
+- `rtl/core/register_file.v`, `control_unit.v`, `imm_gen.v`, and `alu.v` provide shared datapath functions.
 
+Key documents:
+
+- [docs/PIPELINE_BLOCK_DIAGRAM.md](docs/PIPELINE_BLOCK_DIAGRAM.md)
 - [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
 - [docs/MICRO_ARCH.md](docs/MICRO_ARCH.md)
+- [docs/ISA_SUBSET.md](docs/ISA_SUBSET.md)
 - [docs/VERIFICATION_PLAN.md](docs/VERIFICATION_PLAN.md)
 - [docs/DEBUG_GUIDE.md](docs/DEBUG_GUIDE.md)
 - [docs/DESIGN_JOURNEY.md](docs/DESIGN_JOURNEY.md)
 
 ## Run
 
-Directed smoke test with Icarus:
+Run both Icarus directed regressions:
+
+```sh
+make test
+```
+
+Run either test independently:
 
 ```sh
 make smoke
+make pipeline
 ```
 
 UVM flow with Questa/ModelSim:
@@ -52,14 +80,15 @@ UVM flow with Questa/ModelSim:
 make questa
 ```
 
-Icarus Verilog does not provide a full UVM library, so it is used only for the smoke test.
+Icarus Verilog does not provide a full UVM library, so it is used for the directed smoke and pipeline-hazard tests.
 
 ## Development Rule
 
-An instruction is complete only when all of these are updated:
+An instruction is complete only when all of these agree:
 
 - ISA documentation
-- RTL decode/execute path
-- directed test
-- UVM reference model/scoreboard
+- RTL decode and datapath behavior
+- pipeline hazard and control-flow behavior
+- directed tests
+- UVM reference model and scoreboard
 - functional coverage

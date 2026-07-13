@@ -3,6 +3,7 @@ module decode_stage(
     input wire [31:0] instr,
     input wire [31:0] write_data,
     input wire        reg_write,
+    input wire [4:0]  write_rd,
 
     output wire [31:0] rd1,
     output wire [31:0] rd2,
@@ -27,7 +28,7 @@ module decode_stage(
         .we(reg_write),
         .rs1(rs1),
         .rs2(rs2),
-        .rd(rd),
+        .rd(write_rd),
         .wd(write_data),
         .rd1(rd1),
         .rd2(rd2)

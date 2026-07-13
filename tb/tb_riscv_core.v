@@ -21,6 +21,9 @@ module tb_riscv_core;
     
     // Test program
     initial begin
+        // Assert reset before the first active clock edge.
+        reset = 1'b1;
+
         // Setup waveform dump
         $dumpfile("riscv.vcd");
         $dumpvars(0, tb_riscv_core);
@@ -93,17 +96,28 @@ dut.fetch_inst.imem.mem[0] = 32'h00500093;  // addi x1, x0, 5
         dut.fetch_inst.imem.mem[43] = 32'h100e13;   // addi x28, x0, 1   -> skipped by JALR
         dut.fetch_inst.imem.mem[44] = 32'h400f93;   // addi x31, x0, 4   -> executed after JALR target
 
+        // Non-zero byte/halfword lane selection tests.
+        dut.fetch_inst.imem.mem[45] = 32'h00d04403; // lbu  x8, 13(x0) -> byte lane 1 = 0x22
+        dut.fetch_inst.imem.mem[46] = 32'h00e01483; // lh   x9, 14(x0) -> upper halfword = 0x4433
+        dut.fetch_inst.imem.mem[47] = 32'h00c00e03; // lb   x28,12(x0) -> sign-extended 0x80
+
         // Pre-initialize data memory with test value for load instruction testing
         dut.memory_inst.dmem.mem[1] = 32'h00008888;  // Test value for LB, LBU, LH, LHU instructions
         dut.memory_inst.dmem.mem[2] = 32'h00000000;  // Initialize mem[2] for store instruction testing
+        dut.memory_inst.dmem.mem[3] = 32'h44332280;  // Non-zero byte/halfword lanes
+
+        // The architectural register file is intentionally not reset. Give the
+        // skipped destination a known sentinel so the branch test is meaningful.
+        dut.decode_inst.rf.regfile[6] = 32'd0;
         
-        // Apply reset
-        reset = 1;
+        // Release reset away from the active clock edge to avoid a sampling race.
         repeat (2) @(posedge clk);
-        reset = 0;
+        @(negedge clk);
+        reset = 1'b0;
         
-        // Run for enough cycles (45 instructions, ~70 cycles)
-        repeat (70) @(posedge clk);
+        // Allow for pipeline fill, data-hazard stalls, and control-hazard flushes.
+        repeat (160) @(posedge clk);
+        @(negedge clk);
         
         // Display results
         $display("\n========== Test Results ==========");
@@ -112,17 +126,21 @@ dut.fetch_inst.imem.mem[0] = 32'h00500093;  // addi x1, x0, 5
         $display("x3 = %0d (expected: 8)", dut.decode_inst.rf.regfile[3]);
         $display("x4 = %0d (expected: 5)", dut.decode_inst.rf.regfile[4]);
         $display("x5 = %0d (expected: 8)", dut.decode_inst.rf.regfile[5]);
+        $display("x6 = %0d (expected: 0, skipped)", dut.decode_inst.rf.regfile[6]);
         $display("x7 = %0d (expected: 9)", dut.decode_inst.rf.regfile[7]);
         $display("mem[0] = %0d (expected: 8)", dut.memory_inst.dmem.mem[0]);
         $display("\n--- Load Instruction Tests ---");
         $display("x11 (LB  0x88) = %d (expected: -120)", $signed(dut.decode_inst.rf.regfile[11][7:0]));
-        $display("x12 (LBU 0x88) = %0d (expected: 136)", dut.decode_inst.rf.regfile[12][7:0]);
+        $display("x12 (LBU 0x88) = 0x%08x (expected: 0x00000088)", dut.decode_inst.rf.regfile[12]);
         $display("x13 (LH  0x8888) = %d (expected: -30584)", $signed(dut.decode_inst.rf.regfile[13][15:0]));
-        $display("x14 (LHU 0x8888) = %0d (expected: 34952)", dut.decode_inst.rf.regfile[14][15:0]);
+        $display("x14 (LHU 0x8888) = 0x%08x (expected: 0x00008888)", dut.decode_inst.rf.regfile[14]);
+        $display("x8  (LBU lane 1) = 0x%08x (expected: 0x00000022)", dut.decode_inst.rf.regfile[8]);
+        $display("x9  (LH lane 2)  = 0x%08x (expected: 0x00004433)", dut.decode_inst.rf.regfile[9]);
+        $display("x28 (LB lane 0)  = %0d (expected: -128)", $signed(dut.decode_inst.rf.regfile[28]));
         $display("\n--- Store Instruction Tests ---");
         $display("mem[2] (SB + SH) = 0x%08x (expected: 0x00030005)", dut.memory_inst.dmem.mem[2]);
         $display("x15 (LW mem[2]) = 0x%08x (expected: 0x00030005)", dut.decode_inst.rf.regfile[15]);
-        $display("x10 (JAL) = %0d (expected: 156)", dut.decode_inst.rf.regfile[10]);
+        $display("x10 (JAL) = %0d (expected: 160)", dut.decode_inst.rf.regfile[10]);
         $display("x30 (JALR) = %0d (expected: 172)", dut.decode_inst.rf.regfile[30]);
         $display("x31 (JALR skip target) = %0d (expected: 4)", dut.decode_inst.rf.regfile[31]);
         $display("\n--- Branch Instruction Tests ---");
@@ -144,12 +162,16 @@ dut.fetch_inst.imem.mem[0] = 32'h00500093;  // addi x1, x0, 5
             dut.decode_inst.rf.regfile[3] == 8 &&
             dut.decode_inst.rf.regfile[4] == 5 &&
             dut.decode_inst.rf.regfile[5] == 8 &&
+            dut.decode_inst.rf.regfile[6] == 0 &&
             dut.decode_inst.rf.regfile[7] == 9 &&
             dut.memory_inst.dmem.mem[0] == 8 &&
             $signed(dut.decode_inst.rf.regfile[11]) == -120 &&
-            dut.decode_inst.rf.regfile[12][7:0] == 136 &&
+            dut.decode_inst.rf.regfile[12] == 32'd136 &&
             $signed(dut.decode_inst.rf.regfile[13]) == -30584 &&
-            dut.decode_inst.rf.regfile[14][15:0] == 34952 &&
+            dut.decode_inst.rf.regfile[14] == 32'd34952 &&
+            dut.decode_inst.rf.regfile[8] == 32'h00000022 &&
+            dut.decode_inst.rf.regfile[9] == 32'h00004433 &&
+            $signed(dut.decode_inst.rf.regfile[28]) == -128 &&
             dut.memory_inst.dmem.mem[2] == 32'h00030005 &&
             dut.decode_inst.rf.regfile[15] == 32'h00030005 &&
             dut.decode_inst.rf.regfile[10] == 160 &&
@@ -167,7 +189,7 @@ dut.fetch_inst.imem.mem[0] = 32'h00500093;  // addi x1, x0, 5
             dut.decode_inst.rf.regfile[27] == 2) begin
             $display("TEST PASSED!\n");
         end else begin
-            $display("TEST FAILED!\n");
+            $fatal(1, "TEST FAILED!");
         end
         
         $finish;

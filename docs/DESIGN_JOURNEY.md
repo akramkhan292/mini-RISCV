@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This document chronicles the design and verification journey of a 32-bit RISC-V processor, from initial RTL implementation through UVM testbench development.
+This document chronicles the design and verification journey of a 32-bit RISC-V processor, from the initial single-cycle RTL through the current five-stage pipeline migration and UVM testbench development. Early decisions below are retained as history; [MICRO_ARCH.md](MICRO_ARCH.md) is the authoritative description of the current architecture.
 
 ---
 
@@ -12,13 +12,15 @@ This document chronicles the design and verification journey of a 32-bit RISC-V 
 
 #### Decision: Single-Cycle vs Pipelined
 
-**Chosen**: **Single-Cycle** (non-pipelined)
+**Initial choice**: **Single-cycle** (non-pipelined)
+
+**Current architecture**: **In-order five-stage pipeline**
 
 **Rationale**:
 - Simpler design (fewer classes to synchronize)
 - Easier to debug (one instruction at a time)
 - Sufficient for learning RISC-V ISA
-- Can extend to pipeline later
+- Established a simple architectural reference before the pipeline migration
 
 **Comparison**:
 ```
@@ -27,8 +29,8 @@ Fetch → Decode → Execute → Memory → Writeback (all in 1 cycle)
 └─ Simple logic, high latency
 
 Pipelined:
-Stage1 (Fetch) → Stage2 (Decode) → ... (all parallel)
-└─ Complex (hazard detection, forwarding), low latency
+IF → IF/ID → ID → ID/EX → EX → EX/MEM → MEM → MEM/WB → WB
+└─ Overlapped instructions; requires forwarding, stalls, valid bits, and flushes
 ```
 
 #### Decision: Harvard vs Von Neumann Architecture
@@ -292,7 +294,7 @@ risc-v/
 risc-v/
 ├── rtl/        (Clean RTL, no testbenches)
 ├── tb/         (UVM testbenches)
-├── sim/        (Simulation outputs only)
+├── build/      (Ignored simulation outputs)
 └── docs/       (Documentation)
 ```
 
@@ -460,27 +462,22 @@ endgroup
 // Verify expected values
 ```
 
-### Medium-term (3-4 weeks)
+### Current Pipeline Migration
 
-#### 4. **Pipeline Implementation**
+#### 4. **Five-Stage Pipeline Contract**
 ```
-Single-Cycle:
-Fetch → Decode → Execute → Memory → Writeback (1 cycle)
+IF → IF/ID → ID → ID/EX → EX → EX/MEM → MEM → MEM/WB → WB
 
-Pipeline:
-Stage1: Fetch
-Stage2: Decode
-Stage3: Execute
-Stage4: Memory
-Stage5: Writeback
-(All stages parallel - 5x throughput!)
+Normal PC: current IF PC + 4
+Write address: rd carried with the instruction to MEM/WB
+Retirement: valid PC/instruction/side effects observed together in WB
 ```
 
 **Challenges**:
-- Hazard detection (RAW, WAW, WAR)
-- Data forwarding
-- Branch prediction
-- Pipeline flushing
+- RAW hazard detection and operand forwarding
+- Holding IF while inserting a bubble for a load-use dependency
+- Flushing younger instructions after an EX redirect
+- Keeping debug and side-effect metadata aligned with the retiring instruction
 
 #### 5. **Hazard Detection & Forwarding**
 ```
@@ -488,15 +485,16 @@ Issue: add x1, x2, x3
        add x4, x1, x5  ← x1 not ready yet (RAW hazard)
 
 Solution:
-- Detect hazard in decode
-- Stall pipeline or forward from previous stage
+- Forward the newest eligible result from EX/MEM, otherwise MEM/WB
+- Bypass WB to an ID read in the same cycle
+- Stall one cycle when a consumer immediately follows a load
+- Forward branch operands and store data as well as ALU operands
 ```
 
-#### 6. **Branch Prediction**
+#### 6. **Control Hazards and Future Branch Prediction**
 ```
-Without: Always stall 3 cycles after branch
-With: Predict direction, speculatively fetch
-Benefit: 90%+ prediction accuracy on real programs
+Current policy: Resolve branch/jump in EX and flush IF/ID plus ID/EX on redirect
+Future option: Add prediction and recovery after the non-predicting pipeline is qualified
 ```
 
 ### Long-term (1-2 months)
@@ -668,12 +666,13 @@ Measures: Test mutation score (%)
 
 | Phase | Time | Key Achievement |
 |-------|------|---|
-| Architecture | 1 day | Selected single-cycle Harvard |
+| Initial architecture | 1 day | Selected single-cycle Harvard baseline |
 | RTL Coding | 3 days | Implemented 7 modules |
 | Bug Fixing | 2 days | Verilog/simulator issues |
 | UVM Testbench | 4 days | Full verification framework |
 | Documentation | 2 days | Interview prep + design journal |
-| **Total** | **~2 weeks** | **Production-ready verification setup** |
+| Pipeline migration | Ongoing | Five-stage datapath, hazards, redirects, and coherent retirement |
+| **Status** | **Ongoing** | **Qualification continues through directed and UVM regressions** |
 
 **Biggest Win**: UVM testbench is reusable framework - next design 50% faster
 

@@ -11,6 +11,7 @@ module memory_stage(
 );
 
     wire [31:0] data_out;
+    wire [31:0] lane_data;
 
     data_mem dmem (
         .clk(clk),
@@ -22,11 +23,15 @@ module memory_stage(
         .data_out(data_out)
     );
 
-    assign load_data = 
-        (func3 == 3'b000) ? {{24{data_out[7]}},   data_out[7:0]}    : // LB
-        (func3 == 3'b001) ? {{16{data_out[15]}},  data_out[15:0]}   : // LH
-        (func3 == 3'b100) ? {24'b0,               data_out[7:0]}    : // LBU
-        (func3 == 3'b101) ? {16'b0,               data_out[15:0]}   : // LHU
+    // Select the addressed byte lane before applying sign/zero extension.
+    // Halfword and word accesses are expected to be naturally aligned.
+    assign lane_data = data_out >> {addr[1:0], 3'b000};
+
+    assign load_data =
+        (func3 == 3'b000) ? {{24{lane_data[7]}},  lane_data[7:0]}  : // LB
+        (func3 == 3'b001) ? {{16{lane_data[15]}}, lane_data[15:0]} : // LH
+        (func3 == 3'b100) ? {24'b0,               lane_data[7:0]}  : // LBU
+        (func3 == 3'b101) ? {16'b0,               lane_data[15:0]} : // LHU
                             data_out;
 
 endmodule

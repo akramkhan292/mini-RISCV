@@ -89,14 +89,15 @@ class riscv_scoreboard extends uvm_component;
       `uvm_error("REGWRITE_MISMATCH", $sformatf("PC %08h expected %0b got %0b",
                  item.pc, exp_reg_write, item.reg_write))
 
-    if (exp_reg_write && item.wb_rd != 5'd0) begin
+    if (exp_reg_write) begin
       if (item.wb_rd !== exp_rd)
         `uvm_error("RD_MISMATCH", $sformatf("PC %08h expected x%0d got x%0d",
                    item.pc, exp_rd, item.wb_rd))
-      if (item.wb_data !== exp_wb)
+      if (exp_rd != 5'd0 && item.wb_data !== exp_wb)
         `uvm_error("WB_MISMATCH", $sformatf("PC %08h rd x%0d expected %08h got %08h",
                    item.pc, exp_rd, exp_wb, item.wb_data))
-      regs[item.wb_rd] = item.wb_data;
+      if (exp_rd != 5'd0)
+        regs[exp_rd] = exp_wb;
     end
 
     if (item.mem_write !== exp_mem_write)

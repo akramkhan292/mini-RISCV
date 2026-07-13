@@ -1,6 +1,7 @@
 module pc (
     input wire clk,             // Clock signal - triggers PC updates
     input wire rst,             // Reset signal - force PC to 0
+    input wire en,              // Hold PC while the pipeline is stalled
     input wire [31:0] next_pc,  // Next instruction address (from datapath)
     output reg [31:0] pc        // Current instruction address (to memory)
 );
@@ -8,7 +9,7 @@ module pc (
     always @(posedge clk or posedge rst) begin
         if(rst)
             pc <= 32'd0;    // Asynchronous reset
-        else
+        else if(en)
             pc <= next_pc;  // Update PC on clock edge
     end
 

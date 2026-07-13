@@ -1,6 +1,6 @@
 # RISC-V Processor - Interview Preparation Guide
 
-This document contains detailed explanations and interview questions for each component of the RISC-V processor design.
+This document contains detailed explanations and interview questions for the in-order five-stage RISC-V processor design. Examples may discuss possible extensions; [ISA_SUBSET.md](ISA_SUBSET.md) is authoritative for claimed instruction support.
 
 ---
 
@@ -18,7 +18,7 @@ This document contains detailed explanations and interview questions for each co
 
 ## ALU (Arithmetic Logic Unit)
 
-**File**: `rtl/alu.v`
+**File**: `rtl/core/alu.v`
 
 ### What is it?
 The ALU performs arithmetic and logic operations requested by the control unit. It combines two 32-bit operands using a 4-bit control signal to produce a result.
@@ -79,7 +79,7 @@ A: Add more cases to the case statement:
 
 ## Register File
 
-**File**: `rtl/register_file.v`
+**File**: `rtl/core/register_file.v`
 
 ### What is it?
 32×32-bit storage array. 32 general-purpose registers (x0-x31), each holding a 32-bit value. Supports simultaneous read of two registers and write to one register.
@@ -104,7 +104,7 @@ A: Most instructions have TWO operands (e.g., add x5, x1, x2).
    Only one write per cycle (one result per instruction).
    
    Multi-port memory (simultaneous read/write) is expensive.
-   Single-port write is sufficient for one instruction per cycle.
+   A single WB-stage write port is sufficient for this single-issue pipeline.
 ```
 
 **Q2: Why is read asynchronous but write synchronous?**
@@ -159,24 +159,26 @@ A: Register file HOLDS STATE (memory).
 **File**: `rtl/core/pc.v`
 
 ### What is it?
-The PC stores the memory address of the current instruction. On each clock cycle, it updates to the address of the next instruction to fetch.
+The PC stores the address currently presented to instruction memory. It advances to the next fetch address, holds during a load-use stall, or accepts an EX-stage redirect target.
 
 ### Critical Role
 - **Fetch Stage**: Uses PC to read instruction from memory
-- **Increment**: Normally PC += 4 (RISC-V instructions are 4 bytes)
-- **Branching**: On branch, PC = branch_target
+- **Increment**: Normally `next_pc = if_pc + 4` (RISC-V instructions are 4 bytes)
+- **Hold**: A load-use stall prevents the PC register from advancing
+- **Redirect**: A taken branch or jump resolved in EX replaces the sequential candidate
 
 ### Interview Questions
 
 **Q1: What is the Program Counter and why is it critical?**
 ```
-A: PC = Current instruction address
-   Answers: "What instruction is being executed right now?"
+A: PC = Current fetch address
+   Answers: "What instruction is IF fetching right now?"
    
    Why critical:
    - Controls WHAT instruction to fetch
    - Without PC, processor doesn't know sequence of execution
-   - All instruction flow depends on PC
+   - Several older instructions may simultaneously occupy ID, EX, MEM, and WB
+   - All new instruction flow begins at the fetch PC
 ```
 
 **Q2: Why increment by 4, not 1?**
@@ -235,7 +237,7 @@ A: pc = next_pc    (blocking) - WRONG
 
 ## Control Unit
 
-**File**: `rtl/control_unit.v`
+**File**: `rtl/core/control_unit.v`
 
 ### What is it?
 The "brain" of the processor. Decodes instruction opcodes and generates control signals that configure every other component (ALU, memory, registers).
@@ -457,10 +459,10 @@ A: Instructions must be available same cycle as PC changes.
    - Instruction available immediately
    - Next cycle can decode instruction
    
-   Sequential read (WRONG):
+   Sequential read (different interface contract):
    - 1-cycle delay
-   - Would need extra pipeline stage
-   - Reduces performance
+   - Requires the pipeline to account for the memory latency
+   - May require another stage or a fetch handshake
    
    Real CPUs: Instruction cache (L1 I-cache) acts like this.
 ```
@@ -578,10 +580,9 @@ A: Prevents undefined value on data bus.
 
 **Q5: How are memory conflicts handled?**
 ```
-A: This single-port design prevents conflicts:
-   - Can't read and write simultaneously
-   - Can't have multiple readers/writers
-   - One instruction per cycle
+A: The core uses separate instruction and data memories, so IF and MEM do not
+   contend for one shared port. The simple data memory has one pipelined memory
+   operation at a time because the core is single issue.
    
    Real CPUs handle conflicts:
    - Multi-port memories (complex, expensive)
@@ -589,60 +590,54 @@ A: This single-port design prevents conflicts:
    - Memory arbitration logic
    - Lock/wait mechanisms
    
-   Rule: Design prevents conflicts by design.
+   This project does not yet provide cache coherence, arbitration, or back-pressure.
 ```
 
 ---
 
 ## Top-Level Core
 
-**File**: `rtl/riscv_core.v`
+**File**: `rtl/core/riscv_core.v`
 
 ### What is it?
-Integrates all components (ALU, registers, memory, control unit, PC) into a complete processor.
+Integrates the five stages, pipeline registers, forwarding, hazard control, writeback, and retirement/debug interface.
 
 ### Data Flow
 
 ```
 Fetch:
-PC → Instruction Memory → Instruction
+PC → Instruction Memory → IF/ID
 
 Decode:
-Instruction → Opcode/Func Fields → Control Unit → Control Signals
+IF/ID → Decode + Register File → ID/EX
 
 Execute:
-Registers → ALU → Result
-           Immediate ↗
+ID/EX → Forwarding Muxes → ALU / Redirect → EX/MEM
            
 Memory:
-Result → Data Memory → Data
+EX/MEM → Data Memory → MEM/WB
 
 Writeback:
-Data or Result → Register File
+MEM/WB → Result Select → Register File using wb_rd
 
 PC Update:
-Control + Zero Flag → Next PC
+EX redirect, otherwise stall hold, otherwise current IF PC + 4
 ```
 
 ### Interview Questions
 
 **Q1: How does instruction flow through the pipeline?**
 ```
-A: Single-cycle pipeline (no actual pipelining):
+A: One instruction advances through IF, ID, EX, MEM, and WB. At the same time,
+   other instructions can occupy the other stages:
 
-Cycle N:
-1. Fetch: PC = N → Instruction Memory → get instruction
-2. Decode: instruction → Control Unit → control signals
-3. Register: rs1, rs2 → Register File → rd1, rd2
-4. Execute: rd1, rd2 → ALU → result
-5. Memory: result → Data Memory → data_out (if load)
-6. Writeback: result/data_out → Register File
-7. PC Update: PC_next = result (if branch) or PC+4
+              cycle 1  cycle 2  cycle 3  cycle 4  cycle 5
+   instr A       IF       ID       EX       MEM      WB
+   instr B                IF       ID       EX       MEM
+   instr C                         IF       ID       EX
 
-Cycle N+1:
-PC = PC_next → repeat
-
-Real processors pipeline these stages separately.
+   The ideal steady-state retirement rate is one instruction per cycle, while
+   latency remains about five cycles. Stalls and redirects introduce bubbles.
 ```
 
 **Q2: How are immediate values extracted?**
@@ -673,17 +668,20 @@ A: Branch conditions:
    2. ALU: computes x1 - x2
    3. Result: if zero → equal
    
-   PC Update:
-   if (branch && zero)
-       next_pc = pc + immediate
-   else
-       next_pc = pc + 4
+   EX-stage update:
+   if (branch_taken) begin
+       next_pc = ex_pc + immediate
+       flush IF/ID and ID/EX
+   end
    
    How does ALU set zero flag?
    - Computes x1 - x2
    - If x1 == x2, result = 0
    - zero = (result == 0)
    - Control can check zero flag
+
+   Forwarding supplies the newest branch operands. If the immediately preceding
+   instruction is a load needed by the branch, hazard control inserts one bubble.
 ```
 
 **Q4: What prevents data/instruction conflicts?**
@@ -704,25 +702,20 @@ A: Separate memory systems (Harvard architecture):
    - Complex arbitration logic
 ```
 
-**Q5: How would you add pipelining?**
+**Q5: How does the pipeline handle data hazards?**
 ```
-A: Current: Single-cycle (no actual pipeline)
-   
-   5-stage pipeline:
-   Stage 1: Fetch        (PC → Instruction)
-   Stage 2: Decode       (Instruction → Control)
-   Stage 3: Execute      (ALU operation)
-   Stage 4: Memory       (Load/Store)
-   Stage 5: Writeback    (Update Register)
-   
-   Implementation:
-   - Add pipeline registers between stages
-   - Hold intermediate results
-   - Forward results to prevent data hazards
-   - Handle branch penalties
-   
-   Benefits: 5x throughput improvement
-   Costs: Hazards, stalls, complexity
+A: For each true EX source, select the newest available value:
+   1. EX/MEM result, if eligible
+   2. MEM/WB writeback value
+   3. Otherwise the operand captured in ID/EX
+
+   A load result is not ready in EX/MEM, so an immediately dependent instruction
+   causes a one-cycle stall: hold PC and IF/ID, and bubble ID/EX. A separate
+   WB-to-ID bypass handles a register written and read in the same cycle. It is
+   needed because ID/EX samples before the posedge nonblocking register-file write
+   becomes visible; without the bypass, ID/EX can capture the old value.
+
+   Matches on x0 are ignored, and EX/MEM wins if both forwarding stages match.
 ```
 
 ---
@@ -830,8 +823,8 @@ end
 
 1. **Architecture Choices**
    - Why Harvard (separate I/D memory)?
-   - Why single-cycle?
-   - Trade-offs vs pipelined/parallel designs
+   - Why an in-order five-stage pipeline?
+   - Throughput and control-cost trade-offs versus a single-cycle design
 
 2. **Data Flow**
    - How does an instruction get executed?
@@ -845,7 +838,7 @@ end
 
 4. **Extensions**
    - How to add more instructions?
-   - How to add pipelining?
+   - How to add multi-cycle memory back-pressure?
    - How to optimize?
 
 5. **Real Implementations**
@@ -934,15 +927,13 @@ x10-x11 a0-a1  Function arguments / return values
 ### Key UVM Components
 
 #### 1. **Virtual Interface**
-Bridge between testbench and DUT. Carries signals (prog_addr, prog_data, prog_we).
+Bridge between testbench and DUT. Carries reset, the instruction-memory programming port, and the coherent retirement/debug signals.
 
 #### 2. **Sequence Item**
 Transaction class defining instruction format (opcode, rd, rs1, rs2, funct3, funct7, imm).
 
 #### 3. **Sequence**
-Generates 5 random instructions with constraints:
-- Valid opcode distribution: R-type (30%), I-type (30%), Load (20%), Store (10%), Branch (10%)
-- Registers constrained: rd ∈ [1:31], rs1,rs2 ∈ [0:31]
+The current smoke sequence generates a fixed nine-instruction dependency and branch program. The sequence item retains opcode/register constraints for future constrained-random sequences, but the active smoke test is deterministic.
 
 #### 4. **Sequencer**
 Built-in UVM component that queues items and distributes to driver on demand.
@@ -954,10 +945,11 @@ Applies instructions to DUT:
 - Uses virtual interface to drive signals
 
 #### 6. **Monitor**
-Observes program writes:
-- Detects when prog_we = 1
-- Decodes instruction back to fields
-- Sends captured transaction to scoreboard
+Observes coherent WB retirement:
+- Samples when `dbg_commit_valid` is asserted
+- Decodes the retiring instruction
+- Captures its matching PC, register-write, and store fields
+- Sends the transaction to the scoreboard
 
 #### 7. **Agent**
 Connects sequencer ◄► driver, manages components.
@@ -984,11 +976,11 @@ connect_phase → Connect ports
 └─ Monitor ready to capture
 
 run_phase     → Execute test
-├─ Sequence generates 5 items
+├─ Sequence generates the 9-instruction smoke program
 ├─ Sequencer queues items
-├─ Driver applies to DUT sequentially
-├─ Monitor captures outputs
-└─ Continue until all objections dropped
+├─ Driver programs instruction memory while reset is asserted
+├─ Monitor captures 8 architectural retirements (one instruction is skipped)
+└─ Test drains the pipeline or fails on timeout/extra commits
 ```
 
 ### Interview Q&A: UVM
@@ -1051,5 +1043,3 @@ A: raise_objection = "I'm running, don't stop simulation"
 - ✓ Automatic **factory registration**, **copying**, **printing**
 - ✓ Built-in **configuration database** for hierarchical settings
 - ✓ **TLM ports** for safe transaction passing
-
-

@@ -4,5 +4,6 @@
 transcript
 work/
 sim/
+build/
 logs/
 coverage/

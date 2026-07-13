@@ -2,7 +2,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
 
     `uvm_object_utils(riscv_sequence)
 
-    function new(name = "riscv_sequence");
+    function new(string name = "riscv_sequence");
         super.new(name);
     endfunction //new()
 
@@ -27,7 +27,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
     endtask
 
     task add_i(bit [4:0] rd, bit [4:0] rs1, bit [11:0] imm);
-        instr_item item = instr_item::type_id::create("addi_item", this);
+        instr_item item = instr_item::type_id::create("addi_item");
         item.opcode = 7'b0010011;
         item.rd = rd;
         item.rs1 = rs1;
@@ -39,7 +39,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
     endtask
 
     task add_l(bit [4:0] rd, bit [4:0] rs1, bit [11:0] imm);
-        instr_item item = instr_item::type_id::create("lw_item", this);
+        instr_item item = instr_item::type_id::create("lw_item");
         item.opcode = 7'b0000011;
         item.rd = rd;
         item.rs1 = rs1;
@@ -51,7 +51,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
     endtask
 
     task add_s(bit [4:0] rs1, bit [4:0] rs2, bit [11:0] imm);
-        instr_item item = instr_item::type_id::create("sw_item", this);
+        instr_item item = instr_item::type_id::create("sw_item");
         item.opcode = 7'b0100011;
         item.rd = 5'd0;
         item.rs1 = rs1;
@@ -63,7 +63,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
     endtask
 
     task add_b(bit [4:0] rs1, bit [4:0] rs2, bit [12:0] imm);
-        instr_item item = instr_item::type_id::create("beq_item", this);
+        instr_item item = instr_item::type_id::create("beq_item");
         item.opcode = 7'b1100011;
         item.rd = 5'd0;
         item.rs1 = rs1;
@@ -76,7 +76,7 @@ class riscv_sequence extends uvm_sequence#(instr_item);
 
     task add_r(bit [4:0] rd, bit [4:0] rs1, bit [4:0] rs2,
                bit [2:0] funct3, bit [6:0] funct7);
-        instr_item item = instr_item::type_id::create("rtype_item", this);
+        instr_item item = instr_item::type_id::create("rtype_item");
         item.opcode = 7'b0110011;
         item.rd = rd;
         item.rs1 = rs1;
